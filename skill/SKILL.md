@@ -115,7 +115,7 @@ Tell user to start a **NEW conversation** for Phase 3.
 
 **Goal:** Synthesize all persona data into a production-ready writing assistant prompt.
 
-1. **Load all data:**
+### Step 1: Load All Data
 ```python
 from pathlib import Path
 import json
@@ -132,14 +132,34 @@ for f in samples_dir.glob("*.json"):
         samples.append(json.load(file))
 ```
 
-2. **Identify patterns:**
-   - Universal patterns across all personas (base voice)
-   - Per-persona rules (patterns in >80% of samples)
-   - Per-persona tendencies (patterns in 50-80%)
+### Step 2: Identify Patterns
+For each persona, extract:
+- **Universal patterns** across all personas (base voice)
+- **Rules** (patterns in >80% of samples) - state as commands
+- **Tendencies** (patterns in 50-80%) - softer guidance
+- **Anti-patterns** - what to explicitly avoid
 
-3. **Generate prompt** following `references/output_template.md`
+### Step 3: Select Few-Shot Examples (CRITICAL)
+Filter samples for **confidence ≥ 0.9** to ensure only the best examples:
+```python
+high_confidence = [s for s in samples if s.get('confidence', 0) >= 0.9]
+```
 
-4. **Save output:**
+For each persona, select **2-4 diverse examples**:
+- Different lengths (short vs. detailed)
+- Different topics/contexts
+- Representative of the persona's range
+
+If insufficient high-confidence samples exist, use the highest available.
+
+### Step 4: Generate Prompt with Rich JSON
+Follow `references/output_template.md`. **CRITICAL:** 
+
+1. **Embed persona-specific JSON profiles** directly within each persona's markdown section (voice_configuration, structural_dna, formatting_rules)
+
+2. **Append the full `persona_registry.json`** at the end in a JSON code block - this serves as the machine-readable knowledge base
+
+### Step 5: Save Output
 ```python
 output_path = Path.home() / "Documents" / "my-writing-style" / "prompts" / "writing_assistant.md"
 output_path.parent.mkdir(exist_ok=True)
@@ -147,10 +167,58 @@ with open(output_path, "w") as f:
     f.write(generated_prompt)
 ```
 
-5. **Update state:**
+### Step 6: Update State
 ```python
 from state_manager import complete_generation
 complete_generation(str(output_path), ".")
+```
+
+## Persona Registry Schema
+
+The `persona_registry.json` should follow this rich structure:
+
+```json
+{
+  "personas": [
+    {
+      "id": "persona_id",
+      "meta": {
+        "name": "Display Name",
+        "description": "When/how this voice is used",
+        "triggers": ["context1", "context2"],
+        "anti_patterns": ["avoid1", "avoid2"]
+      },
+      "voice_configuration": {
+        "tone_vectors": {
+          "formality": 7,
+          "warmth": 8,
+          "authority": 6,
+          "directness": 9
+        },
+        "keywords_preferred": ["phrase1", "word2"],
+        "keywords_forbidden": ["avoid1", "avoid2"]
+      },
+      "structural_dna": {
+        "opener_pattern": "How messages start",
+        "closer_pattern": "Sign-off style",
+        "sentence_variance": "High/Medium/Low",
+        "paragraph_structure": "Pattern description"
+      },
+      "formatting_rules": {
+        "bullet_points": "Usage pattern",
+        "bolding": "Usage pattern",
+        "emojis": "Allowed/Forbidden/Sparingly"
+      },
+      "few_shot_examples": [
+        {
+          "input_context": "What prompted this",
+          "output_text": "Actual example text"
+        }
+      ]
+    }
+  ],
+  "generated_at": "ISO timestamp"
+}
 ```
 
 ## Scripts Reference
@@ -173,7 +241,7 @@ complete_generation(str(output_path), ".")
 ├── samples/               # Processed samples (one per email)
 ├── prompts/               # Generated prompts
 │   └── writing_assistant.md
-├── persona_registry.json  # Discovered personas
+├── persona_registry.json  # Discovered personas (rich schema)
 ├── state.json            # Workflow state
 └── fetch_state.json      # Email fetch tracking
 ```
