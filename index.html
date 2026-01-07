@@ -138,6 +138,15 @@
         .prompt-box .copy-btn:hover { background: #555; }
         .prompt-box .copy-btn.copied { background: #4CAF50; }
         
+        .id-highlight {
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-weight: bold;
+        }
+        
         /* CTA button */
         .cta-button {
             display: inline-block;
@@ -419,13 +428,17 @@
             <h2 class="section-title"><span class="icon">🚀</span> One-Time Setup (2 minutes)</h2>
             
             <div class="key-concept">
-                <strong>✨ Create once, use forever.</strong> After setup, you'll click a button to launch each phase.
+                <strong>✨ Create once, click to launch.</strong> After setup, all buttons below will open the right assistant automatically.
             </div>
             
             <div class="setup-steps">
                 <div class="setup-step">
                     <h3>Create a ChatWise Assistant</h3>
-                    <p>In ChatWise, create a new assistant named <strong>"Writing Style Clone"</strong></p>
+                    <p>In ChatWise, create a new assistant with:</p>
+                    <ul style="margin-left: 20px; margin-bottom: 12px;">
+                        <li><strong>ID:</strong> <span class="id-highlight">writing-style</span> (this exact ID is required for the buttons to work)</li>
+                        <li><strong>Name:</strong> Writing Style Clone (or whatever you prefer)</li>
+                    </ul>
                     <p>For the system prompt, copy and paste this:</p>
                     
                     <div class="prompt-box">
@@ -476,8 +489,8 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
                 
                 <div class="setup-step">
                     <h3>Save the Assistant</h3>
-                    <p>Click Save. You now have a <strong>"Writing Style Clone"</strong> assistant.</p>
-                    <p>Use this assistant for ALL interactions with this skill.</p>
+                    <p>Click Save. You're done with setup!</p>
+                    <p>Now all the buttons below will automatically open your <span class="id-highlight">writing-style</span> assistant.</p>
                 </div>
             </div>
         </div>
@@ -487,7 +500,7 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
             <h2 class="section-title"><span class="icon">🔄</span> The Workflow</h2>
             
             <div class="warning-concept">
-                <strong>⚠️ Important:</strong> Always use your <strong>"Writing Style Clone"</strong> assistant. Start a <strong>new conversation</strong> after each phase.
+                <strong>⚠️ Important:</strong> Start a <strong>new conversation</strong> after each phase. Just click the next button!
             </div>
             
             <!-- First Time -->
@@ -496,7 +509,7 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
                     <h3>🎯 First Time Setup</h3>
                     <span class="workflow-badge badge-required">Required • ~30 minutes total</span>
                 </div>
-                <p style="margin-bottom: 20px; color: #555;">Complete all three phases in order. Each phase needs a new conversation with your "Writing Style Clone" assistant.</p>
+                <p style="margin-bottom: 20px; color: #555;">Complete all three phases in order. Click each button to start a new conversation.</p>
                 
                 <div class="phase phase-1">
                     <div class="phase-number">1</div>
@@ -512,7 +525,7 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
                             </ul>
                         </div>
                         <div class="phase-actions">
-                            <a href="chatwise://chat?input=Clone%20my%20writing%20style" class="cta-button">🚀 Start Phase 1</a>
+                            <a href="chatwise://chat?prompt=writing-style&input=Clone%20my%20writing%20style" class="cta-button">🚀 Start Phase 1</a>
                         </div>
                         <div class="new-chat-alert">
                             <span class="icon">🔄</span>
@@ -537,7 +550,7 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
                             </ul>
                         </div>
                         <div class="phase-actions">
-                            <a href="chatwise://chat?input=Continue%20cloning%20my%20writing%20style" class="cta-button">🚀 Start Phase 2</a>
+                            <a href="chatwise://chat?prompt=writing-style&input=Continue%20cloning%20my%20writing%20style" class="cta-button">🚀 Start Phase 2</a>
                         </div>
                         <div class="new-chat-alert">
                             <span class="icon">🔄</span>
@@ -557,7 +570,7 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
                             <p>Creates your personalized writing assistant prompt with all discovered personas.</p>
                         </div>
                         <div class="phase-actions">
-                            <a href="chatwise://chat?input=Generate%20my%20writing%20assistant" class="cta-button">🚀 Start Phase 3</a>
+                            <a href="chatwise://chat?prompt=writing-style&input=Generate%20my%20writing%20assistant" class="cta-button">🚀 Start Phase 3</a>
                         </div>
                     </div>
                 </div>
@@ -583,14 +596,14 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
                         <td style="padding: 12px 0; font-weight: 500; color: #666; width: 120px;">Monthly</td>
                         <td style="padding: 12px 0;">
                             Fetch new emails and analyze them<br>
-                            <a href="chatwise://chat?input=Fetch%20my%20new%20emails%20and%20analyze%20them" class="cta-button secondary" style="margin-top: 8px; font-size: 0.9rem; padding: 10px 20px;">📧 Fetch & Analyze New</a>
+                            <a href="chatwise://chat?prompt=writing-style&input=Fetch%20my%20new%20emails%20and%20analyze%20them" class="cta-button secondary" style="margin-top: 8px; font-size: 0.9rem; padding: 10px 20px;">📧 Fetch & Analyze New</a>
                         </td>
                     </tr>
                     <tr>
                         <td style="padding: 12px 0; font-weight: 500; color: #666;">Quarterly</td>
                         <td style="padding: 12px 0;">
                             Regenerate your writing assistant with new patterns<br>
-                            <a href="chatwise://chat?input=Regenerate%20my%20writing%20assistant" class="cta-button secondary" style="margin-top: 8px; font-size: 0.9rem; padding: 10px 20px;">🔄 Regenerate</a>
+                            <a href="chatwise://chat?prompt=writing-style&input=Regenerate%20my%20writing%20assistant" class="cta-button secondary" style="margin-top: 8px; font-size: 0.9rem; padding: 10px 20px;">🔄 Regenerate</a>
                         </td>
                     </tr>
                 </table>
@@ -673,6 +686,9 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
             <h2 class="section-title"><span class="icon">🔧</span> Troubleshooting</h2>
             <div class="card">
                 <div class="troubleshoot-grid">
+                    <div class="issue">Buttons don't work</div>
+                    <div class="solution">Make sure your assistant ID is exactly <span class="id-highlight">writing-style</span></div>
+                    
                     <div class="issue">"Skill not found"</div>
                     <div class="solution">Click "Start Phase 1" - it will install automatically</div>
                     
@@ -684,9 +700,6 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
                     
                     <div class="issue">Gmail not working</div>
                     <div class="solution">Check that Gmail MCP is configured in ChatWise settings</div>
-                    
-                    <div class="issue">Email fetch status</div>
-                    <div class="solution">Run <code>python ~/Documents/my-writing-style/fetch_emails.py --status</code></div>
                 </div>
             </div>
         </div>
