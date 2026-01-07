@@ -1,0 +1,196 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 900">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="3" stdDeviation="4" flood-opacity="0.12"/>
+    </filter>
+    <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+    <linearGradient id="phase1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#E8F5E9"/>
+      <stop offset="100%" style="stop-color:#C8E6C9"/>
+    </linearGradient>
+    <linearGradient id="phase2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#E3F2FD"/>
+      <stop offset="100%" style="stop-color:#BBDEFB"/>
+    </linearGradient>
+    <linearGradient id="phase3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFF3E0"/>
+      <stop offset="100%" style="stop-color:#FFE0B2"/>
+    </linearGradient>
+    <linearGradient id="outputGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#F3E5F5"/>
+      <stop offset="100%" style="stop-color:#E1BEE7"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1000" height="900" fill="#fafafa"/>
+  
+  <!-- Header -->
+  <rect x="0" y="0" width="1000" height="90" fill="url(#headerGrad)"/>
+  <text x="500" y="45" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="white" text-anchor="middle">Writing Style Clone</text>
+  <text x="500" y="72" font-family="Arial, sans-serif" font-size="16" fill="rgba(255,255,255,0.9)" text-anchor="middle">Train AI to write in your authentic voice • ~30 minutes setup</text>
+  
+  <!-- START -->
+  <g transform="translate(500, 130)">
+    <ellipse cx="0" cy="0" rx="80" ry="28" fill="#667eea" filter="url(#shadow)"/>
+    <text x="0" y="6" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white" text-anchor="middle">START HERE</text>
+  </g>
+  
+  <!-- Arrow from START -->
+  <path d="M 500 158 L 500 185" stroke="#667eea" stroke-width="3" fill="none"/>
+  <polygon points="500,195 495,185 505,185" fill="#667eea"/>
+  
+  <!-- PHASE 1 -->
+  <g transform="translate(300, 200)">
+    <rect x="0" y="0" width="400" height="140" rx="16" fill="url(#phase1)" filter="url(#shadow)"/>
+    
+    <!-- Phase badge -->
+    <circle cx="40" cy="35" r="22" fill="#4CAF50"/>
+    <text x="40" y="42" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="white" text-anchor="middle">1</text>
+    
+    <text x="75" y="40" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#2E7D32">SETUP</text>
+    <text x="185" y="40" font-family="Arial, sans-serif" font-size="12" fill="#666">5 minutes • One time</text>
+    
+    <line x1="20" y1="55" x2="380" y2="55" stroke="#4CAF50" stroke-width="1" opacity="0.3"/>
+    
+    <text x="30" y="80" font-family="Arial, sans-serif" font-size="13" fill="#333">
+      <tspan x="30" dy="0">1. Copy README.md contents</tspan>
+      <tspan x="30" dy="22">2. Paste into ChatWise → AI clones repo &amp; creates workspace</tspan>
+      <tspan x="30" dy="22">3. AI walks you through creating your first assistant</tspan>
+    </text>
+  </g>
+  
+  <!-- Arrow 1→2 -->
+  <path d="M 500 340 L 500 370" stroke="#888" stroke-width="2"/>
+  <polygon points="500,380 495,370 505,370" fill="#888"/>
+  
+  <!-- PHASE 2 -->
+  <g transform="translate(300, 385)">
+    <rect x="0" y="0" width="400" height="170" rx="16" fill="url(#phase2)" filter="url(#shadow)"/>
+    
+    <!-- Phase badge -->
+    <circle cx="40" cy="35" r="22" fill="#2196F3"/>
+    <text x="40" y="42" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="white" text-anchor="middle">2</text>
+    
+    <text x="75" y="40" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#1565C0">ANALYSIS</text>
+    <text x="195" y="40" font-family="Arial, sans-serif" font-size="12" fill="#666">15-20 minutes • Repeat monthly</text>
+    
+    <line x1="20" y1="55" x2="380" y2="55" stroke="#2196F3" stroke-width="1" opacity="0.3"/>
+    
+    <text x="30" y="78" font-family="Arial, sans-serif" font-size="13" fill="#333">
+      <tspan x="30" dy="0" font-weight="bold">Using the "Style Analyzer" assistant:</tspan>
+      <tspan x="30" dy="24">📧  "Fetch my last 20 emails and analyze"</tspan>
+      <tspan x="30" dy="22">💼  "Fetch my last 5 LinkedIn posts and analyze"</tspan>
+      <tspan x="30" dy="28" font-style="italic" fill="#666">AI discovers your writing personas automatically</tspan>
+    </text>
+    
+    <!-- Repeat indicator -->
+    <path d="M 380 100 C 420 100, 420 140, 380 140" stroke="#2196F3" stroke-width="2" fill="none" stroke-dasharray="4,3"/>
+    <polygon points="380,140 388,147 388,133" fill="#2196F3"/>
+    <text x="405" y="125" font-family="Arial, sans-serif" font-size="9" fill="#2196F3">Repeat</text>
+  </g>
+  
+  <!-- Arrow 2→3 -->
+  <path d="M 500 555 L 500 585" stroke="#888" stroke-width="2"/>
+  <polygon points="500,595 495,585 505,585" fill="#888"/>
+  
+  <!-- PHASE 3 -->
+  <g transform="translate(300, 600)">
+    <rect x="0" y="0" width="400" height="140" rx="16" fill="url(#phase3)" filter="url(#shadow)"/>
+    
+    <!-- Phase badge -->
+    <circle cx="40" cy="35" r="22" fill="#FF9800"/>
+    <text x="40" y="42" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="white" text-anchor="middle">3</text>
+    
+    <text x="75" y="40" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#E65100">GENERATE</text>
+    <text x="200" y="40" font-family="Arial, sans-serif" font-size="12" fill="#666">5 minutes • Regenerate quarterly</text>
+    
+    <line x1="20" y1="55" x2="380" y2="55" stroke="#FF9800" stroke-width="1" opacity="0.3"/>
+    
+    <text x="30" y="78" font-family="Arial, sans-serif" font-size="13" fill="#333">
+      <tspan x="30" dy="0" font-weight="bold">Using the "Style Generator" assistant:</tspan>
+      <tspan x="30" dy="24">✨  "Generate my personalized writing assistant"</tspan>
+      <tspan x="30" dy="28" font-style="italic" fill="#666">Creates your custom system prompt with all your voices</tspan>
+    </text>
+  </g>
+  
+  <!-- Arrow 3→Output -->
+  <path d="M 500 740 L 500 770" stroke="#888" stroke-width="2"/>
+  <polygon points="500,780 495,770 505,770" fill="#888"/>
+  
+  <!-- OUTPUT -->
+  <g transform="translate(300, 785)">
+    <rect x="0" y="0" width="400" height="90" rx="16" fill="url(#outputGrad)" filter="url(#shadow)" stroke="#9C27B0" stroke-width="2"/>
+    
+    <text x="200" y="35" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#6A1B9A" text-anchor="middle">🎯 YOUR WRITING ASSISTANT</text>
+    <text x="200" y="58" font-family="Arial, sans-serif" font-size="13" fill="#333" text-anchor="middle">ChatWise assistant that writes in YOUR voice</text>
+    <text x="200" y="77" font-family="Arial, sans-serif" font-size="11" fill="#666" text-anchor="middle">Use daily for emails, posts, and any writing</text>
+  </g>
+  
+  <!-- Side panel: ChatWise Assistants -->
+  <g transform="translate(750, 200)">
+    <rect x="0" y="0" width="220" height="320" rx="12" fill="white" filter="url(#shadow)" stroke="#ddd"/>
+    <rect x="0" y="0" width="220" height="40" rx="12" fill="#667eea"/>
+    <rect x="0" y="28" width="220" height="12" fill="#667eea"/>
+    <text x="110" y="27" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white" text-anchor="middle">ChatWise Assistants</text>
+    
+    <!-- Assistant 1 -->
+    <g transform="translate(15, 55)">
+      <rect x="0" y="0" width="190" height="70" rx="8" fill="#E3F2FD" stroke="#2196F3"/>
+      <text x="10" y="22" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#1565C0">Style Analyzer</text>
+      <text x="10" y="40" font-family="Arial, sans-serif" font-size="10" fill="#555">Reads your emails &amp; posts</text>
+      <text x="10" y="55" font-family="Arial, sans-serif" font-size="10" fill="#555">Discovers your writing patterns</text>
+    </g>
+    
+    <!-- Assistant 2 -->
+    <g transform="translate(15, 135)">
+      <rect x="0" y="0" width="190" height="70" rx="8" fill="#FFF3E0" stroke="#FF9800"/>
+      <text x="10" y="22" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#E65100">Style Generator</text>
+      <text x="10" y="40" font-family="Arial, sans-serif" font-size="10" fill="#555">Synthesizes all patterns</text>
+      <text x="10" y="55" font-family="Arial, sans-serif" font-size="10" fill="#555">Creates your custom prompt</text>
+    </g>
+    
+    <!-- Assistant 3 -->
+    <g transform="translate(15, 215)">
+      <rect x="0" y="0" width="190" height="85" rx="8" fill="#F3E5F5" stroke="#9C27B0" stroke-width="2"/>
+      <text x="10" y="22" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#6A1B9A">[Your Name]'s Voice</text>
+      <text x="10" y="40" font-family="Arial, sans-serif" font-size="10" fill="#555">Your personalized assistant</text>
+      <text x="10" y="55" font-family="Arial, sans-serif" font-size="10" fill="#555">Writes emails in your style</text>
+      <text x="10" y="70" font-family="Arial, sans-serif" font-size="10" fill="#555">Matches your tone &amp; patterns</text>
+      <text x="165" y="75" font-family="Arial, sans-serif" font-size="16">⭐</text>
+    </g>
+  </g>
+  
+  <!-- Side panel: What AI Learns -->
+  <g transform="translate(30, 200)">
+    <rect x="0" y="0" width="220" height="280" rx="12" fill="white" filter="url(#shadow)" stroke="#ddd"/>
+    <rect x="0" y="0" width="220" height="40" rx="12" fill="#667eea"/>
+    <rect x="0" y="28" width="220" height="12" fill="#667eea"/>
+    <text x="110" y="27" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white" text-anchor="middle">What AI Learns</text>
+    
+    <text x="15" y="65" font-family="Arial, sans-serif" font-size="11" fill="#333">
+      <tspan x="15" dy="0" font-weight="bold" fill="#4CAF50">✓ Your greeting patterns</tspan>
+      <tspan x="25" dy="16" fill="#666">"Team," vs "Hey Sarah,"</tspan>
+      
+      <tspan x="15" dy="28" font-weight="bold" fill="#4CAF50">✓ Your tone for each context</tspan>
+      <tspan x="25" dy="16" fill="#666">Formal, warm, direct, casual</tspan>
+      
+      <tspan x="15" dy="28" font-weight="bold" fill="#4CAF50">✓ Your signature phrases</tspan>
+      <tspan x="25" dy="16" fill="#666">"Let's sync", "Appreciate you"</tspan>
+      
+      <tspan x="15" dy="28" font-weight="bold" fill="#4CAF50">✓ Your paragraph style</tspan>
+      <tspan x="25" dy="16" fill="#666">Short &amp; punchy vs detailed</tspan>
+      
+      <tspan x="15" dy="28" font-weight="bold" fill="#4CAF50">✓ Your sign-off patterns</tspan>
+      <tspan x="25" dy="16" fill="#666">"Best," "-J", "LMK"</tspan>
+    </text>
+  </g>
+  
+  <!-- Connector lines to side panels -->
+  <path d="M 700 270 L 750 270" stroke="#ddd" stroke-width="1" stroke-dasharray="4,3"/>
+  <path d="M 300 450 L 250 350" stroke="#ddd" stroke-width="1" stroke-dasharray="4,3"/>
+  
+</svg>

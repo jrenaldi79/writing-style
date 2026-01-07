@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Writing Style Clone - How It Works</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        /* Main flow section */
+        .flow {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-bottom: 50px;
+        }
+        .phase {
+            background: white;
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            display: grid;
+            grid-template-columns: 60px 1fr;
+            gap: 20px;
+            align-items: start;
+        }
+        .phase-number {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .phase-1 .phase-number { background: #4CAF50; }
+        .phase-2 .phase-number { background: #2196F3; }
+        .phase-3 .phase-number { background: #FF9800; }
+        
+        .phase-content h2 {
+            font-size: 1.4rem;
+            margin-bottom: 4px;
+        }
+        .phase-1 h2 { color: #2E7D32; }
+        .phase-2 h2 { color: #1565C0; }
+        .phase-3 h2 { color: #E65100; }
+        
+        .phase-meta {
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 16px;
+        }
+        .phase-steps {
+            list-style: none;
+        }
+        .phase-steps li {
+            padding: 8px 0;
+            padding-left: 32px;
+            position: relative;
+            color: #444;
+            font-size: 1rem;
+        }
+        .phase-steps li::before {
+            position: absolute;
+            left: 0;
+            font-size: 1.1rem;
+        }
+        .phase-1 .phase-steps li:nth-child(1)::before { content: '📋'; }
+        .phase-1 .phase-steps li:nth-child(2)::before { content: '🤖'; }
+        .phase-1 .phase-steps li:nth-child(3)::before { content: '✅'; }
+        .phase-2 .phase-steps li:nth-child(1)::before { content: '📧'; }
+        .phase-2 .phase-steps li:nth-child(2)::before { content: '💼'; }
+        .phase-2 .phase-steps li:nth-child(3)::before { content: '🔍'; }
+        .phase-3 .phase-steps li:nth-child(1)::before { content: '✨'; }
+        .phase-3 .phase-steps li:nth-child(2)::before { content: '📝'; }
+        .phase-3 .phase-steps li:nth-child(3)::before { content: '🎯'; }
+        
+        .arrow {
+            text-align: center;
+            font-size: 1.5rem;
+            color: #ccc;
+            margin: -10px 0;
+        }
+        
+        /* Output section */
+        .output {
+            background: linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%);
+            border: 2px solid #9C27B0;
+            border-radius: 16px;
+            padding: 32px;
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        .output-icon {
+            font-size: 3rem;
+            margin-bottom: 12px;
+        }
+        .output h3 {
+            color: #6A1B9A;
+            font-size: 1.4rem;
+            margin-bottom: 8px;
+        }
+        .output p {
+            color: #555;
+        }
+        
+        /* Assistants section */
+        .section-title {
+            text-align: center;
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 24px;
+        }
+        .assistants {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 50px;
+        }
+        .assistant {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+        .assistant-header {
+            padding: 16px 20px;
+            color: white;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        .assistant:nth-child(1) .assistant-header { background: #2196F3; }
+        .assistant:nth-child(2) .assistant-header { background: #FF9800; }
+        .assistant:nth-child(3) .assistant-header { background: #9C27B0; }
+        .assistant-body {
+            padding: 20px;
+        }
+        .assistant-body p {
+            color: #555;
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+        }
+        .assistant-use {
+            font-size: 0.85rem;
+            color: #888;
+            font-style: italic;
+        }
+        
+        /* What AI learns */
+        .learns {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            margin-bottom: 50px;
+        }
+        .learns h3 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 24px;
+        }
+        .learns-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .learn-item {
+            text-align: center;
+            padding: 16px;
+        }
+        .learn-item .icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+        .learn-item h4 {
+            color: #4CAF50;
+            font-size: 1rem;
+            margin-bottom: 6px;
+        }
+        .learn-item p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        /* Getting started */
+        .cta {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            color: white;
+        }
+        .cta h3 {
+            font-size: 1.5rem;
+            margin-bottom: 16px;
+        }
+        .cta p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-bottom: 24px;
+        }
+        .cta-steps {
+            display: inline-block;
+            text-align: left;
+            background: rgba(255,255,255,0.15);
+            padding: 20px 30px;
+            border-radius: 12px;
+        }
+        .cta-steps li {
+            padding: 8px 0;
+            font-size: 1rem;
+        }
+        
+        /* Before/After */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 50px;
+        }
+        .comparison-box {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+        .comparison-box h4 {
+            margin-bottom: 16px;
+            font-size: 1.1rem;
+        }
+        .comparison-box.before h4 { color: #999; }
+        .comparison-box.after h4 { color: #4CAF50; }
+        .comparison-box blockquote {
+            font-style: italic;
+            color: #555;
+            line-height: 1.6;
+            border-left: 3px solid #ddd;
+            padding-left: 16px;
+        }
+        .comparison-box.after blockquote {
+            border-left-color: #4CAF50;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.8rem; }
+            .phase { grid-template-columns: 1fr; }
+            .phase-number { margin-bottom: 10px; }
+            .comparison { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Writing Style Clone</h1>
+        <p>Train AI to write in your authentic voice • ~30 minutes setup</p>
+    </div>
+    
+    <div class="container">
+        
+        <!-- Main Flow -->
+        <div class="flow">
+            <div class="phase phase-1">
+                <div class="phase-number">1</div>
+                <div class="phase-content">
+                    <h2>Setup</h2>
+                    <p class="phase-meta">5 minutes • One time only</p>
+                    <ul class="phase-steps">
+                        <li>Copy the README.md file contents</li>
+                        <li>Paste into ChatWise — AI clones the repo and creates your workspace</li>
+                        <li>AI guides you through creating your first assistant</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="arrow">↓</div>
+            
+            <div class="phase phase-2">
+                <div class="phase-number">2</div>
+                <div class="phase-content">
+                    <h2>Analysis</h2>
+                    <p class="phase-meta">15-20 minutes • Repeat monthly to improve</p>
+                    <ul class="phase-steps">
+                        <li>"Fetch my last 20 emails and analyze" — AI reads your sent emails</li>
+                        <li>"Fetch my last 5 LinkedIn posts and analyze" — AI reads your posts</li>
+                        <li>AI automatically discovers your writing personas</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="arrow">↓</div>
+            
+            <div class="phase phase-3">
+                <div class="phase-number">3</div>
+                <div class="phase-content">
+                    <h2>Generate</h2>
+                    <p class="phase-meta">5 minutes • Regenerate quarterly</p>
+                    <ul class="phase-steps">
+                        <li>"Generate my writing assistant" — AI synthesizes all your patterns</li>
+                        <li>Creates a custom prompt with your voice, rules, and examples</li>
+                        <li>You get a personalized writing assistant in ChatWise</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Output -->
+        <div class="output">
+            <div class="output-icon">🎯</div>
+            <h3>Your Personal Writing Assistant</h3>
+            <p>A ChatWise assistant that writes emails, posts, and messages in YOUR voice</p>
+        </div>
+        
+        <!-- ChatWise Assistants -->
+        <h2 class="section-title">The 3 Assistants You'll Create</h2>
+        <div class="assistants">
+            <div class="assistant">
+                <div class="assistant-header">Style Analyzer</div>
+                <div class="assistant-body">
+                    <p>Reads your emails and LinkedIn posts. Identifies your writing patterns, tone, and style for different contexts.</p>
+                    <p class="assistant-use">Use: During analysis phase, then monthly for updates</p>
+                </div>
+            </div>
+            <div class="assistant">
+                <div class="assistant-header">Style Generator</div>
+                <div class="assistant-body">
+                    <p>Takes all discovered patterns and creates your personalized writing prompt with rules and examples.</p>
+                    <p class="assistant-use">Use: After analysis is complete, then quarterly</p>
+                </div>
+            </div>
+            <div class="assistant">
+                <div class="assistant-header">[Your Name]'s Voice ⭐</div>
+                <div class="assistant-body">
+                    <p>Your daily writing companion. Draft emails, posts, and messages that sound authentically like you.</p>
+                    <p class="assistant-use">Use: Every day for all your writing needs</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- What AI Learns -->
+        <div class="learns">
+            <h3>What the AI Learns About Your Writing</h3>
+            <div class="learns-grid">
+                <div class="learn-item">
+                    <div class="icon">👋</div>
+                    <h4>Greetings</h4>
+                    <p>"Team," vs "Hey Sarah," vs "Dear Mr. Chen"</p>
+                </div>
+                <div class="learn-item">
+                    <div class="icon">🎭</div>
+                    <h4>Tone</h4>
+                    <p>Formal, warm, direct, casual — by context</p>
+                </div>
+                <div class="learn-item">
+                    <div class="icon">💬</div>
+                    <h4>Phrases</h4>
+                    <p>Your signature expressions and verbal tics</p>
+                </div>
+                <div class="learn-item">
+                    <div class="icon">📝</div>
+                    <h4>Structure</h4>
+                    <p>Short & punchy or detailed paragraphs</p>
+                </div>
+                <div class="learn-item">
+                    <div class="icon">✍️</div>
+                    <h4>Sign-offs</h4>
+                    <p>"Best," vs "-J" vs "LMK"</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Before/After -->
+        <h2 class="section-title">The Difference</h2>
+        <div class="comparison">
+            <div class="comparison-box before">
+                <h4>❌ Generic AI</h4>
+                <blockquote>
+                    Dear Team,<br><br>
+                    I hope this email finds you well. I wanted to reach out regarding our upcoming project timeline. Please let me know if you have any questions.<br><br>
+                    Best regards
+                </blockquote>
+            </div>
+            <div class="comparison-box after">
+                <h4>✅ Your Voice</h4>
+                <blockquote>
+                    Team,<br><br>
+                    Quick update on Q2 priorities. We're shifting focus to the customer dashboard—I'll share the full roadmap in Thursday's all-hands.<br><br>
+                    Three things I need by EOD Wednesday: [...]<br><br>
+                    Appreciate you all pushing hard on this. Let's sync Thursday.<br><br>
+                    -John
+                </blockquote>
+            </div>
+        </div>
+        
+        <!-- CTA -->
+        <div class="cta">
+            <h3>Ready to Get Started?</h3>
+            <p>The whole process takes about 30 minutes.</p>
+            <div class="cta-steps">
+                <ol>
+                    <li>Get the README.md file from John</li>
+                    <li>Open ChatWise and start a new chat</li>
+                    <li>Paste the entire README contents</li>
+                    <li>Follow the AI's step-by-step instructions</li>
+                </ol>
+            </div>
+        </div>
+        
+    </div>
+</body>
+</html>
