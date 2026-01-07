@@ -73,60 +73,92 @@
             font-weight: 500;
         }
         
-        /* Install steps */
-        .install-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
+        /* Setup steps */
+        .setup-steps {
+            counter-reset: step;
         }
-        .install-step h3 {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 12px;
-            font-size: 1.1rem;
+        .setup-step {
+            position: relative;
+            padding-left: 70px;
+            margin-bottom: 30px;
         }
-        .install-step .num {
+        .setup-step::before {
+            counter-increment: step;
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
             background: #667eea;
             color: white;
-            width: 32px;
-            height: 32px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.95rem;
-            flex-shrink: 0;
+            font-size: 1.4rem;
+            font-weight: bold;
         }
-        .install-step p { color: #555; font-size: 0.95rem; margin-bottom: 8px; }
-        .install-step code {
+        .setup-step h3 {
+            font-size: 1.15rem;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .setup-step p { color: #555; margin-bottom: 12px; }
+        
+        /* Prompt box */
+        .prompt-box {
+            background: #1e1e1e;
+            border-radius: 10px;
+            padding: 20px;
+            position: relative;
+            margin-top: 12px;
+        }
+        .prompt-box code {
+            color: #e6e6e6;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
             display: block;
-            background: #f5f5f5;
-            padding: 12px 16px;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            overflow-x: auto;
-            line-height: 1.8;
         }
-        .install-step .note {
-            background: #E3F2FD;
-            color: #1565C0;
-            padding: 10px 14px;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            margin-top: 10px;
+        .prompt-box .copy-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #444;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .prompt-box .copy-btn:hover { background: #555; }
+        .prompt-box .copy-btn.copied { background: #4CAF50; }
+        
+        .prompt-label {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 10px;
         }
         
         /* Key concept banner */
         .key-concept {
-            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
-            border: 2px solid #ff9800;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            border: 2px solid #4CAF50;
             border-radius: 12px;
             padding: 20px 24px;
             text-align: center;
             margin-bottom: 24px;
         }
-        .key-concept strong { color: #e65100; }
+        .key-concept strong { color: #2E7D32; }
         
         /* Phases */
         .phase {
@@ -274,11 +306,13 @@
         @media (max-width: 768px) {
             .header h1 { font-size: 2rem; }
             .header p { font-size: 1rem; }
-            .install-grid, .why-grid, .comparison { grid-template-columns: 1fr; }
+            .why-grid, .comparison { grid-template-columns: 1fr; }
             .phase { grid-template-columns: 1fr; }
             .phase-number { margin-bottom: 10px; }
             .troubleshoot-grid { grid-template-columns: 1fr; }
             .troubleshoot-grid .issue { margin-top: 10px; }
+            .setup-step { padding-left: 60px; }
+            .setup-step::before { width: 44px; height: 44px; font-size: 1.2rem; }
         }
     </style>
 </head>
@@ -313,22 +347,71 @@
             </div>
         </div>
         
-        <!-- Installation -->
+        <!-- Setup -->
         <div class="section">
-            <h2 class="section-title"><span class="icon">📦</span> Installation (5 minutes)</h2>
-            <div class="install-grid">
-                <div class="card install-step">
-                    <h3><span class="num">1</span> Clone the Repository</h3>
-                    <p>Open Terminal and run:</p>
-                    <code>cd ~/Documents<br>git clone https://github.com/jrenaldi79/writing-style.git</code>
+            <h2 class="section-title"><span class="icon">🚀</span> Getting Started (2 minutes)</h2>
+            
+            <div class="key-concept">
+                <strong>✨ No installation required!</strong> Just create an assistant and the AI sets everything up for you.
+            </div>
+            
+            <div class="setup-steps">
+                <div class="setup-step">
+                    <h3>Create a ChatWise Assistant</h3>
+                    <p>In ChatWise, create a new assistant named <strong>"Writing Style Clone"</strong></p>
+                    <p>For the system prompt, copy and paste this entire block:</p>
+                    
+                    <div class="prompt-box">
+                        <button class="copy-btn" onclick="copyPrompt(this, 'system-prompt')">Copy</button>
+                        <code id="system-prompt">You are a writing style analysis assistant powered by the Writing Style Clone skill.
+
+## Skill Location
+The skill should be at: ~/Documents/writing-style/skill/
+
+## First: Check Installation
+Check if ~/Documents/writing-style/skill/SKILL.md exists.
+- If NOT: Offer to install from https://github.com/jrenaldi79/writing-style
+- If YES: Check ~/Documents/my-writing-style/state.json for current phase
+
+## Installation (if needed)
+If user agrees to install, run:
+```
+mkdir -p ~/Documents/writing-style && cd ~/Documents/writing-style && curl -L https://github.com/jrenaldi79/writing-style/archive/refs/heads/main.zip -o repo.zip && unzip -q repo.zip && mv writing-style-main/* . && rm -rf writing-style-main repo.zip
+```
+Then confirm: "Writing Style Clone installed! Say 'Clone my writing style' to begin."
+
+## Trigger Phrases
+- "Clone my writing style" → Start/continue the workflow
+- "Continue cloning my writing style" → Resume analysis
+- "Generate my writing assistant" → Create final prompt
+- "Check my writing style status" → Show current state
+
+## Phase Detection
+Read state.json to determine phase:
+- No state.json → Phase 1: Setup
+- current_phase: "analysis" → Phase 2: Analysis  
+- current_phase: "generation" → Phase 3: Generate
+- current_phase: "complete" → Offer maintenance options
+
+## Core Workflow
+Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instructions.
+
+## Key Behaviors
+1. Always check installation status first
+2. Route to correct phase based on state.json
+3. Use scripts from ~/Documents/my-writing-style/
+4. After each phase, tell user to start a NEW conversation
+5. Be concise and action-oriented</code>
+                    </div>
                 </div>
-                <div class="card install-step">
-                    <h3><span class="num">2</span> Create ChatWise Assistant</h3>
-                    <p>In ChatWise, create a new assistant named:</p>
-                    <code>"Writing Style Clone"</code>
-                    <p style="margin-top: 12px;">For the system prompt, copy the entire contents of:</p>
-                    <code>~/Documents/writing-style/CHATWISE_PROMPT.md</code>
-                    <div class="note">💡 Open the file and copy everything into the system prompt field</div>
+                
+                <div class="setup-step">
+                    <h3>Start a Chat and Say:</h3>
+                    <div class="prompt-box">
+                        <button class="copy-btn" onclick="copyPrompt(this, 'trigger-prompt')">Copy</button>
+                        <code id="trigger-prompt">Clone my writing style</code>
+                    </div>
+                    <p style="margin-top: 16px;">The AI will automatically download and install the skill, then guide you through the entire process. No terminal commands needed!</p>
                 </div>
             </div>
         </div>
@@ -337,8 +420,8 @@
         <div class="section">
             <h2 class="section-title"><span class="icon">🔄</span> The Three Phases</h2>
             
-            <div class="key-concept">
-                <strong>💡 Important:</strong> Start a <strong>new conversation</strong> for each phase to keep things fast.
+            <div class="key-concept" style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-color: #ff9800;">
+                <strong style="color: #e65100;">💡 Important:</strong> Start a <strong>new conversation</strong> for each phase to keep things fast.
             </div>
             
             <div class="card">
@@ -348,7 +431,7 @@
                         <h3>Setup <span class="new-chat">New Chat</span></h3>
                         <p class="phase-meta">5 minutes • One time only</p>
                         <div class="phase-trigger">"Clone my writing style"</div>
-                        <p class="phase-details">Creates your workspace at <code>~/Documents/my-writing-style/</code> and initializes the project.</p>
+                        <p class="phase-details">Installs the skill (if needed) and creates your workspace at <code>~/Documents/my-writing-style/</code></p>
                     </div>
                 </div>
                 
@@ -422,12 +505,11 @@
             <div class="card">
                 <div class="file-structure">
 ~/Documents/<br>
-├── writing-style/ <span class="comment"># The skill (from GitHub)</span><br>
+├── writing-style/ <span class="comment"># The skill (auto-downloaded)</span><br>
 │   ├── skill/SKILL.md<br>
-│   ├── CHATWISE_PROMPT.md <span class="comment"># System prompt to copy</span><br>
 │   └── index.html <span class="comment"># This guide</span><br>
 │<br>
-└── my-writing-style/ <span class="comment"># Your personal data (created by skill)</span><br>
+└── my-writing-style/ <span class="comment"># Your personal data</span><br>
     ├── state.json <span class="comment"># Tracks your progress</span><br>
     ├── persona_registry.json <span class="comment"># Discovered personas</span><br>
     ├── samples/ <span class="comment"># Analyzed writing</span><br>
@@ -442,10 +524,9 @@
             <h2 class="section-title"><span class="icon">✅</span> Prerequisites</h2>
             <div class="card">
                 <ul style="margin-left: 20px;">
-                    <li><strong>ChatWise</strong> installed on your computer</li>
-                    <li><strong>Git</strong> installed (for cloning the repo)</li>
-                    <li><strong>Gmail MCP</strong> configured in ChatWise (for email analysis)</li>
-                    <li><strong>LinkedIn MCP</strong> configured in ChatWise (optional, for post analysis)</li>
+                    <li><strong>ChatWise</strong> (or any AI chat app with terminal access)</li>
+                    <li><strong>Gmail MCP</strong> configured (for email analysis)</li>
+                    <li><strong>LinkedIn MCP</strong> configured (optional, for post analysis)</li>
                 </ul>
             </div>
         </div>
@@ -458,7 +539,7 @@
                     <li>✅ Everything runs <strong>locally</strong> on your machine</li>
                     <li>✅ Only style patterns are saved, not full email contents</li>
                     <li>✅ Your data folder is <strong>never uploaded</strong> anywhere</li>
-                    <li>✅ The repo contains only the skill code, not your data</li>
+                    <li>✅ The skill code is open source on GitHub</li>
                 </ul>
             </div>
         </div>
@@ -469,7 +550,7 @@
             <div class="card">
                 <div class="troubleshoot-grid">
                     <div class="issue">"Skill not found"</div>
-                    <div class="solution">Make sure repo is cloned to <code>~/Documents/writing-style/</code></div>
+                    <div class="solution">Say "Clone my writing style" and the AI will install it automatically</div>
                     
                     <div class="issue">"No project found"</div>
                     <div class="solution">Start with "Clone my writing style" first (Phase 1)</div>
@@ -478,7 +559,7 @@
                     <div class="solution">Say "Check my writing style status" to see current state</div>
                     
                     <div class="issue">Want to start over</div>
-                    <div class="solution">Delete <code>~/Documents/my-writing-style/</code> folder and restart</div>
+                    <div class="solution">Ask the AI to delete <code>~/Documents/my-writing-style/</code> and restart</div>
                     
                     <div class="issue">Gmail not working</div>
                     <div class="solution">Check that Gmail MCP is configured in ChatWise settings</div>
@@ -496,9 +577,6 @@
                     
                     <div class="issue">Quarterly</div>
                     <div class="solution">Regenerate your writing assistant prompt with new patterns</div>
-                    
-                    <div class="issue">Updates</div>
-                    <div class="solution"><code>cd ~/Documents/writing-style && git pull</code></div>
                 </div>
             </div>
         </div>
@@ -509,6 +587,20 @@
         <p>Built by John Renaldi • January 2025</p>
         <p><a href="https://github.com/jrenaldi79/writing-style">github.com/jrenaldi79/writing-style</a></p>
     </div>
+    
+    <script>
+        function copyPrompt(btn, id) {
+            const code = document.getElementById(id);
+            navigator.clipboard.writeText(code.textContent).then(() => {
+                btn.textContent = 'Copied!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = 'Copy';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        }
+    </script>
     
 </body>
 </html>
