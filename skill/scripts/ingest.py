@@ -4,8 +4,12 @@ Ingest - Process batch analysis results from Claude
 
 Takes a JSON file with analysis results and:
 - Updates persona_registry.json
-- Saves individual sample files
+- Saves individual sample files WITH full email content (NEW: 2026-01-07)
 - Updates state.json
+
+The sample files now include the full email content (subject, body, snippet, etc.)
+under a 'content' field, eliminating the need to cross-reference raw_samples/
+during the generation phase.
 
 Usage:
     python ingest.py batch_001.json
@@ -20,6 +24,7 @@ from datetime import datetime
 
 DATA_DIR = Path.home() / "Documents" / "my-writing-style"
 SAMPLES_DIR = DATA_DIR / "samples"
+RAW_SAMPLES_DIR = DATA_DIR / "raw_samples"
 PERSONA_FILE = DATA_DIR / "persona_registry.json"
 STATE_FILE = DATA_DIR / "state.json"
 
@@ -89,6 +94,22 @@ def ingest_batch(batch_file, dry_run=False):
         persona_name = sample.get("persona", "Unassigned")
         persona_counts[persona_name] = persona_counts.get(persona_name, 0) + 1
         
+        # Load email content from raw_samples
+        raw_email_file = RAW_SAMPLES_DIR / f"email_{sample_id}.json"
+        email_content = {}
+        if raw_email_file.exists():
+            with open(raw_email_file) as f:
+                raw_data = json.load(f)
+                # Extract essential fields for generation phase
+                email_content = {
+                    "subject": raw_data.get("subject", ""),
+                    "body": raw_data.get("body", ""),
+                    "snippet": raw_data.get("snippet", ""),
+                    "from": raw_data.get("from", ""),
+                    "to": raw_data.get("to", ""),
+                    "date": raw_data.get("date", "")
+                }
+        
         # Save sample file
         sample_file = SAMPLES_DIR / f"{sample_id}.json"
         
@@ -98,6 +119,7 @@ def ingest_batch(batch_file, dry_run=False):
             "persona": persona_name,
             "confidence": sample.get("confidence", 0.0),
             "analysis": sample.get("analysis", {}),
+            "content": email_content,
             "ingested": datetime.now().isoformat()
         }
         
