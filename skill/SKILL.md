@@ -1,6 +1,6 @@
 ---
 name: writing-style-clone
-description: Analyze a user's emails and LinkedIn posts to discover their distinct writing personas, then generate a personalized system prompt that enables any LLM to replicate their authentic voice. Use when the user wants to clone their writing style, create a writing assistant that sounds like them, analyze their communication patterns, or generate a personalized writing prompt. Triggers on phrases like "clone my writing style", "analyze my writing", "create a writing assistant", or "how do I write".
+description: Analyze a user's emails and LinkedIn posts to discover their distinct writing personas, then generate a personalized system prompt that enables any LLM to replicate their authentic voice.
 ---
 
 # Writing Style Clone
@@ -9,246 +9,188 @@ Analyze writing samples to discover personas and generate a personalized writing
 
 ## Workflow Overview
 
-This skill operates in three phases across multiple conversations (to manage context window):
+Three phases across multiple conversations (to manage context window):
 
 1. **Setup** → Create data directory, download emails in bulk
 2. **Analysis** → Analyze downloaded samples, cluster into personas
 3. **Generation** → Synthesize patterns into final writing assistant prompt
 
-Each phase should run in a **fresh conversation** to avoid context overflow.
-
-## First Message Protocol
-
-On every conversation start:
-
-```python
-from pathlib import Path
-
-DATA_DIR = Path.home() / "Documents" / "my-writing-style"
-state_file = DATA_DIR / "state.json"
-
-if not state_file.exists():
-    print("No existing project found. Starting Phase 1: Setup")
-else:
-    import json
-    with open(state_file) as f:
-        state = json.load(f)
-    phase = state.get("current_phase", "setup")
-    print(f"Resuming project. Current phase: {phase}")
-```
-
-Ask user to confirm, then route to correct phase.
-
 ## Phase 1: Setup
 
 **Goal:** Create workspace, download emails in bulk.
 
-### Steps
-
-1. Create data directory structure:
+Run setup sequence:
 ```bash
-mkdir -p ~/Documents/my-writing-style/{samples,prompts,raw_samples}
+mkdir -p ~/Documents/my-writing-style/{samples,prompts,raw_samples,batches} && \
+cp ~/Documents/writing-style/skill/scripts/*.py ~/Documents/my-writing-style/ && \
+cd ~/Documents/my-writing-style && \
+python3 -c 'import sys; sys.path.append("."); from state_manager import init_state; init_state(".")'
 ```
 
-2. Copy scripts from skill to data directory:
+Then ask user how many emails to fetch (recommend 100+):
 ```bash
-cp ~/Documents/writing-style/skill/scripts/*.py ~/Documents/my-writing-style/
+cd ~/Documents/my-writing-style && python3 fetch_emails.py --count N
 ```
 
-3. **Run the email fetcher** (this is the key efficiency gain):
-```bash
-cd ~/Documents/my-writing-style
-python fetch_emails.py --count 50
-```
-
-This downloads 50 emails directly via MCP protocol WITHOUT using Claude's tokens.
-
-4. Initialize state:
-```python
-import sys
-sys.path.insert(0, str(Path.home() / "Documents" / "my-writing-style"))
-from state_manager import init_state
-init_state(str(DATA_DIR))
-```
-
-5. Confirm setup complete:
-> "Setup complete! Downloaded [N] emails to `raw_samples/`.
->
-> **Next step:** Start a NEW conversation and say 'Continue cloning my writing style' to analyze your emails."
+After completion, tell user to start a **NEW conversation** for Phase 2.
 
 ## Phase 2: Analysis
 
-**Goal:** Analyze downloaded samples, cluster into personas.
+**Goal:** Analyze downloaded samples, output JSON, run ingest.
 
-### Reading Raw Samples
+### Batch Size
+Process **30-40 emails per batch** to maximize efficiency while staying within context limits.
 
-Emails are pre-downloaded in `~/Documents/my-writing-style/raw_samples/`. Read them directly:
+### Workflow (Token-Efficient)
 
+1. **Read raw emails:**
 ```python
 from pathlib import Path
 import json
 
 raw_dir = Path.home() / "Documents" / "my-writing-style" / "raw_samples"
-emails = list(raw_dir.glob("email_*.json"))
-print(f"Found {len(emails)} emails to analyze")
-```
+emails = sorted(raw_dir.glob("email_*.json"))[:40]  # First 40 unprocessed
 
-### Batch Analysis
-
-Process 10-15 emails per batch to stay within context limits:
-
-```python
-batch_size = 10
-for i, email_file in enumerate(emails[:batch_size]):
+for email_file in emails:
     with open(email_file) as f:
-        email = json.load(f)
-    
-    # Extract key fields
-    subject = email.get("subject", "")
-    body = email.get("body", email.get("snippet", ""))
-    to = email.get("to", "")
-    
-    # Analyze using schema in references/analysis_schema.md
-    # ... analysis logic ...
+        data = json.load(f)
+    # Analyze: subject, body, to, snippet
 ```
 
-### For Each Sample
+2. **Analyze each email** using schema in `references/analysis_schema.md`:
+   - Tone, formality, sentence/paragraph style
+   - Greeting and closing patterns
+   - Punctuation habits, contractions
+   - Notable phrases and structure
 
-Extract analysis using schema in `references/analysis_schema.md`:
-- Tone, formality, sentence length, paragraph style
-- Punctuation patterns, contractions usage
-- Greeting/closing patterns (email)
-- Hook style, CTA patterns (LinkedIn)
+3. **Cluster into personas:**
+   - Group similar samples by tone + formality + structure
+   - Create new persona if 3+ samples cluster together
+   - Use specific names: "Executive Brief" not "Formal Email"
 
-### Clustering Logic
+4. **Output single JSON file** following `references/batch_schema.md`:
+```json
+{
+  "batch_id": "batch_001",
+  "new_personas": [...],
+  "samples": [...]
+}
+```
+Save to: `~/Documents/my-writing-style/batches/batch_001.json`
 
-**Bootstrap mode (no personas yet):**
-1. Analyze all samples in batch
-2. Group by similarity (tone + formality + structure)
-3. Create persona for each cluster of 3+ similar samples
-4. Use specific names: "All-Hands Strategist" not "Formal Email"
-
-**Update mode (personas exist):**
-1. Score new samples against existing personas using `compute_similarity_score()`
-2. Score ≥ 0.70 → Assign to persona
-3. Score 0.40-0.70 → Flag for review, tentatively assign
-4. Score < 0.40 all → Hold as unassigned
-5. If 3+ unassigned cluster together → Create new persona
-
-### After Each Batch
-
-```python
-from state_manager import update_analysis_progress
-update_analysis_progress(batches_completed=N, total_samples=N)
+5. **Run ingest:**
+```bash
+cd ~/Documents/my-writing-style && python3 ingest.py batches/batch_001.json
 ```
 
-Report:
+### Why JSON Instead of Python Scripts?
+- **Saves ~40% output tokens** - no Python boilerplate per batch
+- Generic `ingest.py` handles all persistence
+- Cleaner version control of analysis results
+
+### Confidence Scoring
+| Score | Meaning |
+|-------|---------|
+| ≥0.70 | Strong match - assign to persona |
+| 0.40-0.69 | Tentative - assign but flag for review |
+| <0.40 | Weak - hold as unassigned |
+
+### Batch Complete Report
+After each ingest, show:
 ```
-════════════════════════════════════════
+════════════════════════════════════════════════════
 BATCH COMPLETE
-════════════════════════════════════════
-Samples analyzed: [N]
-Personas: [list with sample counts and confidence]
-Ready for generation: [Yes/No - need 50+ samples, 3+ per persona]
-════════════════════════════════════════
+════════════════════════════════════════════════════
+Samples analyzed: 35
+Personas: Executive Brief (12), Team Update (15), Client Response (8)
+Total samples: 35
+Ready for generation: No (need 50+ samples)
+════════════════════════════════════════════════════
 ```
+
+### Available Commands
+| Command | Action |
+|---------|--------|
+| `Analyze next batch` | Process next 30-40 raw emails |
+| `Show status` | Run `python ingest.py --status` |
+| `I'm ready to generate` | Mark ready, prompt for new conversation |
 
 ### Completing Analysis
-
-When user has sufficient data (50+ samples recommended):
-
+When user has 50+ samples across 3+ personas:
 ```python
 from state_manager import mark_ready_for_generation
 mark_ready_for_generation()
 ```
 
-> "Analysis complete! You have [N] samples across [N] personas.
->
-> **Next step:** Start a NEW conversation and say 'Generate my writing assistant' to create your personalized prompt."
-
-### Available Commands
-
-| Command | Action |
-|---------|--------|
-| `Analyze next batch` | Process next 10 raw emails |
-| `Show persona summary` | Print current persona state |
-| `Show flagged samples` | List ambiguous assignments |
-| `Merge [persona_A] into [persona_B]` | Combine personas |
-| `I'm ready to generate` | Mark ready, prompt for new conversation |
+Tell user to start a **NEW conversation** for Phase 3.
 
 ## Phase 3: Generation
 
 **Goal:** Synthesize all persona data into a production-ready writing assistant prompt.
 
-### Steps
-
-1. Load all data:
+1. **Load all data:**
 ```python
-from style_manager import init, export_for_prompt_generation
-init(str(DATA_DIR))
-data = export_for_prompt_generation()
+from pathlib import Path
+import json
+
+samples_dir = Path.home() / "Documents" / "my-writing-style" / "samples"
+persona_file = Path.home() / "Documents" / "my-writing-style" / "persona_registry.json"
+
+with open(persona_file) as f:
+    personas = json.load(f)
+
+samples = []
+for f in samples_dir.glob("*.json"):
+    with open(f) as file:
+        samples.append(json.load(file))
 ```
 
-2. Identify universal patterns across all personas (base voice)
+2. **Identify patterns:**
+   - Universal patterns across all personas (base voice)
+   - Per-persona rules (patterns in >80% of samples)
+   - Per-persona tendencies (patterns in 50-80%)
 
-3. For each persona, extract:
-   - Trigger conditions (when to use)
-   - Rules (patterns in >80% of samples)
-   - Tendencies (patterns in 50-80%)
-   - Best examples (2-3 excerpts)
-   - Anti-patterns (what to avoid)
+3. **Generate prompt** following `references/output_template.md`
 
-4. Generate markdown prompt following template in `references/output_template.md`
-
-5. Save output:
+4. **Save output:**
 ```python
-output_path = DATA_DIR / "prompts" / "writing_assistant.md"
+output_path = Path.home() / "Documents" / "my-writing-style" / "prompts" / "writing_assistant.md"
+output_path.parent.mkdir(exist_ok=True)
 with open(output_path, "w") as f:
     f.write(generated_prompt)
 ```
 
-6. Update state:
+5. **Update state:**
 ```python
 from state_manager import complete_generation
 complete_generation(str(output_path))
 ```
 
-7. Deliver to user:
-> "Your personalized writing assistant is ready!
->
-> **File:** `~/Documents/my-writing-style/prompts/writing_assistant.md`
->
-> **To use it:** Create a new assistant in your preferred AI tool and paste the contents as the system prompt."
-
-## State Management
-
-All state operations use `state_manager.py`. Key functions:
-
-- `init_state(data_dir)` — Create initial state.json
-- `get_current_phase()` — Returns: setup | analysis | generation | complete
-- `update_analysis_progress(batches, samples)` — Track analysis progress
-- `mark_ready_for_generation()` — Transition from analysis to generation
-- `complete_generation(output_path)` — Mark workflow complete
-
-## Scripts
+## Scripts Reference
 
 | Script | Purpose |
 |--------|---------|
-| `fetch_emails.py` | Bulk download emails via MCP (runs outside Claude) |
-| `style_manager.py` | Persona and sample management |
+| `fetch_emails.py` | Bulk download emails via MCP |
+| `ingest.py` | Process batch JSON, update personas/samples |
 | `state_manager.py` | Phase tracking across conversations |
+| `style_manager.py` | Persona management utilities |
 | `analysis_utils.py` | Similarity scoring and clustering |
+
+## File Structure
+
+```
+~/Documents/my-writing-style/
+├── raw_samples/           # Downloaded emails (email_*.json)
+├── batches/               # Analysis output (batch_*.json)
+├── samples/               # Processed samples (one per email)
+├── prompts/               # Generated prompts
+│   └── writing_assistant.md
+├── persona_registry.json  # Discovered personas
+├── state.json            # Workflow state
+└── fetch_state.json      # Email fetch tracking
+```
 
 ## Maintenance
 
-After initial setup, users can:
-
-- **Monthly:** Run `python fetch_emails.py --count 20` then analyze new batches
-- **As needed:** Merge duplicate personas
-- **Quarterly:** Regenerate writing_assistant.md with new patterns
-
-To re-run generation: 
-```python
-from state_manager import reset_to_phase
-reset_to_phase("generation")
-```
+- **Monthly:** Run `python fetch_emails.py` to get new emails, analyze new batch
+- **Quarterly:** Regenerate writing_assistant.md with accumulated patterns
