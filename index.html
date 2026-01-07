@@ -173,6 +173,14 @@
             background: #666;
         }
         
+        .cta-button.linkedin {
+            background: #0077b5;
+            box-shadow: 0 6px 20px rgba(0, 119, 181, 0.35);
+        }
+        .cta-button.linkedin:hover {
+             box-shadow: 0 8px 25px rgba(0, 119, 181, 0.45);
+        }
+        
         /* Key concept banner */
         .key-concept {
             background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
@@ -257,6 +265,7 @@
         .phase-1 .phase-number { background: #4CAF50; }
         .phase-2 .phase-number { background: #2196F3; }
         .phase-3 .phase-number { background: #FF9800; }
+        .phase-linkedin .phase-number { background: #0077b5; } /* LinkedIn Blue */
         
         .phase-content h4 {
             font-size: 1.1rem;
@@ -269,7 +278,20 @@
         .phase-1 h4 { color: #2E7D32; }
         .phase-2 h4 { color: #1565C0; }
         .phase-3 h4 { color: #E65100; }
+        .phase-linkedin h4 { color: #0077b5; }
         
+        .track-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+        .track-email { background: #e8f5e9; color: #2E7D32; }
+        .track-linkedin { background: #e1f5fe; color: #0077b5; }
+
         .phase-meta { font-size: 0.85rem; color: #888; margin-bottom: 10px; }
         .phase-details { color: #555; font-size: 0.95rem; }
         .phase-details ul {
@@ -333,7 +355,7 @@
         .comparison-box.before { border-left: 4px solid #ccc; }
         .comparison-box.before h4 { color: #999; }
         .comparison-box.after { border-left: 4px solid #4CAF50; }
-        .comparison-box.after h4 { color: #4CAF50; }
+        .comparison-box.after { border-left: 4px solid #4CAF50; }
         .comparison-box blockquote {
             font-style: italic;
             color: #555;
@@ -353,8 +375,7 @@
             overflow-x: auto;
         }
         .file-structure .comment { color: #6a737d; }
-        .file-structure .highlight { color: #9C27B0; font-weight: bold; }
-        
+        .file-structure .highlight { color: #9C27B0; font-weight: bold; }         
         /* Troubleshooting */
         .troubleshoot-grid {
             display: grid;
@@ -394,7 +415,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>Writing Style Clone v2</h1>
+        <h1>Writing Style Clone v2.1</h1>
         <p>Train AI to write in your authentic voice using mathematical clustering and validated persona discovery</p>
     </div>
     
@@ -402,38 +423,28 @@
         
         <!-- What's New -->
         <div class="section">
-            <h2 class="section-title"><span class="icon">🚀</span> What's New in v2</h2>
+            <h2 class="section-title"><span class="icon">🚀</span> What's New in v2.1</h2>
             <div class="card">
                 <table style="width: 100%; border-collapse: collapse;">
                     <tr style="border-bottom: 1px solid #eee;">
                         <td style="padding: 12px; font-weight: 600; color: #999;">Feature</td>
-                        <td style="padding: 12px; font-weight: 600; color: #999;">v1 (Vibes)</td>
-                        <td style="padding: 12px; font-weight: 600; color: #4CAF50;">v2 (Mathematical)</td>
+                        <td style="padding: 12px; font-weight: 600; color: #999;">v2.0</td>
+                        <td style="padding: 12px; font-weight: 600; color: #4CAF50;">v2.1</td>
                     </tr>
                     <tr style="border-bottom: 1px solid #eee;">
-                        <td style="padding: 12px;">Clustering</td>
-                        <td style="padding: 12px; color: #999;">Agent decides</td>
-                        <td style="padding: 12px; color: #4CAF50; font-weight: 500;">✅ Embeddings + HDBSCAN</td>
+                        <td style="padding: 12px;">Architecture</td>
+                        <td style="padding: 12px; color: #999;">Email Only</td>
+                        <td style="padding: 12px; color: #4CAF50; font-weight: 500;">✅ Dual Pipeline (Email + LinkedIn)</td>
                     </tr>
                     <tr style="border-bottom: 1px solid #eee;">
-                        <td style="padding: 12px;">Scoring</td>
-                        <td style="padding: 12px; color: #999;">Inconsistent</td>
-                        <td style="padding: 12px; color: #4CAF50; font-weight: 500;">✅ Calibration anchors</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid #eee;">
-                        <td style="padding: 12px;">Input Quality</td>
-                        <td style="padding: 12px; color: #999;">All emails</td>
-                        <td style="padding: 12px; color: #4CAF50; font-weight: 500;">✅ Garbage filtered</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid #eee;">
-                        <td style="padding: 12px;">Context</td>
-                        <td style="padding: 12px; color: #999;">None</td>
-                        <td style="padding: 12px; color: #4CAF50; font-weight: 500;">✅ Recipient-aware</td>
+                        <td style="padding: 12px;">Batching</td>
+                        <td style="padding: 12px; color: #999;">Sequential</td>
+                        <td style="padding: 12px; color: #4CAF50; font-weight: 500;">✅ 97% Faster Scraping</td>
                     </tr>
                     <tr>
                         <td style="padding: 12px;">Validation</td>
-                        <td style="padding: 12px; color: #999;">Hope it works</td>
-                        <td style="padding: 12px; color: #4CAF50; font-weight: 500;">✅ Similarity scoring</td>
+                        <td style="padding: 12px; color: #999;">Basic</td>
+                        <td style="padding: 12px; color: #4CAF50; font-weight: 500;">✅ Snippet & Spam Filtering</td>
                     </tr>
                 </table>
             </div>
@@ -451,9 +462,10 @@
                     <div class="problem">❌ You write differently for different audiences</div>
                     <div class="solution">✅ AI recognizes your distinct "personas" and switches between them</div>
                 </div>
+                <!-- Dual Pipeline Benefit -->
                 <div class="why-item">
-                    <div class="problem">❌ Editing AI output to sound like you takes forever</div>
-                    <div class="solution">✅ AI gets it right the first time</div>
+                    <div class="problem">❌ One voice doesn't fit all</div>
+                    <div class="solution">✅ Separate professional (LinkedIn) and adaptive (Email) voices</div>
                 </div>
                 <div class="why-item">
                     <div class="problem">❌ Generic greetings and sign-offs</div>
@@ -499,87 +511,73 @@
             <h2 class="section-title"><span class="icon">🔄</span> The Workflow</h2>
             
             <div class="warning-concept">
-                <strong>⚠️ Important:</strong> Start a <strong>new conversation</strong> after each phase. Just click the next button!
+                <strong>⚠️ Flexible:</strong> You can run the Email Track, the LinkedIn Track, or both.
             </div>
             
-            <!-- First Time -->
+            <!-- Tracks -->
             <div class="workflow-section first-time">
                 <div class="workflow-header">
-                    <h3>🎯 First Time Setup</h3>
-                    <span class="workflow-badge badge-required">Required • ~30 minutes total</span>
+                    <h3>🎯 Project Pipelines</h3>
+                    <span class="workflow-badge badge-required">Select your path</span>
                 </div>
-                <p style="margin-bottom: 20px; color: #555;">Complete all three phases in order. Click each button to start a new conversation.</p>
                 
+                <!-- Track A: Email -->
                 <div class="phase phase-1">
                     <div class="phase-number">1</div>
                     <div class="phase-content">
-                        <h4>Setup + Preprocessing</h4>
-                        <p class="phase-meta">~10 minutes</p>
+                        <h4>Email Pipeline <span class="track-label track-email">Track A</span></h4>
+                        <p class="phase-meta">~15 minutes • Connects to Gmail</p>
                         <div class="phase-details">
-                            <p>Installs the skill, downloads emails, and runs preprocessing pipeline.</p>
+                            <p>Analyzes your sent emails to discover context-aware personas.</p>
                             <ul>
-                                <li>AI asks how many emails (suggest 100-150)</li>
-                                <li><strong>NEW:</strong> Filters garbage (15-20% rejection)</li>
-                                <li><strong>NEW:</strong> Enriches with recipient metadata</li>
-                                <li><strong>NEW:</strong> Generates embeddings and clusters mathematically</li>
-                                <li>Fully automated — just wait for completion</li>
+                                <li>Clustering: 3-7 distinct voices (Boss vs Team)</li>
+                                <li>Input: 200 sent emails (auto-fetched)</li>
+                                <li>Output: Structural DNA & Tone Vectors</li>
                             </ul>
                         </div>
                         <div class="phase-actions">
-                            <a href="chatwise://chat?assistant=writing-style&input=Clone%20my%20writing%20style" class="cta-button">🚀 Start Phase 1</a>
-                        </div>
-                        <div class="new-chat-alert">
-                            <span class="icon">🔄</span>
-                            <span><strong>When complete:</strong> Close this chat. Click the Phase 2 button below.</span>
+                            <a href="chatwise://chat?assistant=writing-style&input=Clone%20my%20email%20writing%20style" class="cta-button">🚀 Start Email Track</a>
                         </div>
                     </div>
                 </div>
                 
-                <div class="arrow">↓ New Conversation</div>
-                
-                <div class="phase phase-2">
+                <!-- Track B: LinkedIn -->
+                <div class="phase phase-linkedin">
                     <div class="phase-number">2</div>
                     <div class="phase-content">
-                        <h4>Analysis</h4>
-                        <p class="phase-meta">~15-20 minutes</p>
+                        <h4>LinkedIn Pipeline <span class="track-label track-linkedin">Track B</span></h4>
+                        <p class="phase-meta">~5 minutes • Public Scraper</p>
                         <div class="phase-details">
-                            <p>Analyzes pre-clustered emails with calibrated scoring to discover personas.</p>
+                            <p>Scrapes your public profile to build a consistent thought-leader voice.</p>
                             <ul>
-                                <li><strong>NEW:</strong> AI reads calibration anchors for consistent scoring</li>
-                                <li><strong>NEW:</strong> Analyzes one mathematical cluster at a time</li>
-                                <li><strong>NEW:</strong> Tone vectors (1-10 scales) for formality, warmth, authority, directness</li>
-                                <li><strong>Goal:</strong> All clusters analyzed (typically 3-5 batches)</li>
-                                <li><strong>When done:</strong> Say "I'm ready to generate"</li>
+                                <li><strong>Batch Scrape:</strong> Efficiently fetches recent posts (5 calls max)</li>
+                                <li><strong>Unify:</strong> Creates single authoritative voice</li>
+                                <li><strong>Output:</strong> Professional Tone Vectors</li>
                             </ul>
                         </div>
                         <div class="phase-actions">
-                            <a href="chatwise://chat?assistant=writing-style&input=Continue%20cloning%20my%20writing%20style" class="cta-button">🚀 Start Phase 2</a>
-                        </div>
-                        <div class="new-chat-alert">
-                            <span class="icon">🔄</span>
-                            <span><strong>When complete:</strong> Close this chat. Click the Phase 3 button below.</span>
+                            <a href="chatwise://chat?assistant=writing-style&input=Run%20LinkedIn%20Pipeline" class="cta-button linkedin">👔 Start LinkedIn Track</a>
                         </div>
                     </div>
                 </div>
                 
-                <div class="arrow">↓ New Conversation</div>
+                <div class="arrow">↓ Then Final Step</div>
                 
+                <!-- Final Merge -->
                 <div class="phase phase-3">
                     <div class="phase-number">3</div>
                     <div class="phase-content">
-                        <h4>Generate + Validate</h4>
-                        <p class="phase-meta">~7 minutes</p>
+                        <h4>Generate Master Agent</h4>
+                        <p class="phase-meta">~2 minutes</p>
                         <div class="phase-details">
-                            <p>Creates your personalized writing assistant prompt and validates it.</p>
+                            <p>Synthesizes everything into your final copy-paste artifact.</p>
                             <ul>
-                                <li>Synthesizes personas into production-ready prompt</li>
-                                <li><strong>NEW:</strong> Runs automatic validation against held-out samples</li>
-                                <li><strong>NEW:</strong> Reports similarity scores and improvement suggestions</li>
-                                <li>Iterates if needed until validation passes</li>
+                                <li><strong>Smart Routing:</strong> "If Email, detect persona. If LinkedIn, use brand voice."</li>
+                                <li><strong>Validation:</strong> Checks against holdout data</li>
                             </ul>
                         </div>
                         <div class="phase-actions">
-                            <a href="chatwise://chat?assistant=writing-style&input=Generate%20my%20writing%20assistant" class="cta-button">🚀 Start Phase 3</a>
+                            <a href="chatwise://chat?assistant=writing-style&input=Generate%20my%20writing%20assistant" class="cta-button">✨ Generate Final Prompt</a>
                         </div>
                     </div>
                 </div>
@@ -602,46 +600,23 @@
                 
                 <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
                     <tr style="border-bottom: 1px solid #eee;">
-                        <td style="padding: 12px 0; font-weight: 500; color: #666; width: 120px;">Monthly</td>
+                    <td style="padding: 12px 0; font-weight: 500; color: #666; width: 120px;">Monthly</td>
                         <td style="padding: 12px 0;">
                             Fetch new emails and analyze them<br>
                             <a href="chatwise://chat?assistant=writing-style&input=Fetch%20my%20new%20emails%20and%20analyze%20them" class="cta-button secondary" style="margin-top: 8px; font-size: 0.9rem; padding: 10px 20px;">📧 Fetch & Analyze New</a>
                         </td>
                     </tr>
                     <tr>
-                        <td style="padding: 12px 0; font-weight: 500; color: #666;">Quarterly</td>
+                        <td style="padding: 12px 0; font-weight: 500; color: #666;">On Demand</td>
                         <td style="padding: 12px 0;">
-                            Regenerate your writing assistant with new patterns<br>
-                            <a href="chatwise://chat?assistant=writing-style&input=Regenerate%20my%20writing%20assistant" class="cta-button secondary" style="margin-top: 8px; font-size: 0.9rem; padding: 10px 20px;">🔄 Regenerate</a>
+                            Update LinkedIn Persona (after posting usage)<br>
+                            <a href="chatwise://chat?assistant=writing-style&input=Update%20LinkedIn%20Persona" class="cta-button secondary" style="margin-top: 8px; font-size: 0.9rem; padding: 10px 20px;">👔 Update LinkedIn</a>
                         </td>
                     </tr>
                 </table>
             </div>
         </div>
-        
-        <!-- Before/After -->
-        <div class="section">
-            <h2 class="section-title"><span class="icon">📝</span> The Difference</h2>
-            <div class="comparison">
-                <div class="card comparison-box before">
-                    <h4>❌ Generic AI</h4>
-                    <blockquote>
-                        Dear Team,<br><br>
-                        I hope this email finds you well. I wanted to reach out regarding our upcoming project timeline. Please let me know if you have any questions.<br><br>
-                        Best regards
-                    </blockquote>
-                </div>
-                <div class="card comparison-box after">
-                    <h4>✅ Your Voice</h4>
-                    <blockquote>
-                        Team,<br><br>
-                        Quick update on Q2 priorities. We're shifting focus to the customer dashboard—I'll share the full roadmap in Thursday's all-hands.<br><br>
-                        Three things I need by EOD Wednesday: [...]<br><br>
-                        -John
-                    </blockquote>
-                </div>
-            </div>
-        </div>
+
         
         <!-- File Structure -->
         <div class="section">
@@ -654,62 +629,12 @@
 │   └── index.html <span class="comment"># This guide</span><br>
 │<br>
 └── my-writing-style/ <span class="comment"># Your personal data</span><br>
-    ├── raw_samples/ <span class="comment"># Downloaded emails</span><br>
     ├── batches/ <span class="comment"># Analysis JSON output</span><br>
-    ├── fetch_state.json <span class="comment"># Tracks which emails fetched</span><br>
-    ├── state.json <span class="comment"># Tracks workflow progress</span><br>
-    ├── persona_registry.json <span class="comment"># Discovered personas</span><br>
-    ├── samples/ <span class="comment"># Analyzed writing</span><br>
+    ├── cluster_emails.json <span class="comment"># Email Personas</span><br>
+    ├── <span class="highlight">linkedin_persona.json</span> <span class="comment"># LinkedIn Brand Voice (New)</span><br>
     └── prompts/<br>
-        └── <span class="highlight">writing_assistant.md ← YOUR OUTPUT</span>
+        └── <span class="highlight">writing_assistant.md ← MASTER OUTPUT</span>
                 </div>
-            </div>
-        </div>
-        
-        <!-- Technical Details -->
-        <div class="section">
-            <h2 class="section-title"><span class="icon">🔬</span> Technical Details</h2>
-            <div class="card">
-                <h3 style="margin-bottom: 12px; font-size: 1.1rem;">Preprocessing Pipeline</h3>
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.95rem;">
-                    <tr style="border-bottom: 1px solid #eee;">
-                        <td style="padding: 10px; font-weight: 600;">Step</td>
-                        <td style="padding: 10px; font-weight: 600;">Purpose</td>
-                        <td style="padding: 10px; font-weight: 600;">Time</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid #eee;">
-                        <td style="padding: 10px;">Quality Filter</td>
-                        <td style="padding: 10px;">Remove forwards, auto-replies, too-short emails</td>
-                        <td style="padding: 10px;">10 sec</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid #eee;">
-                        <td style="padding: 10px;">Enrich Metadata</td>
-                        <td style="padding: 10px;">Extract recipient type, audience, thread position</td>
-                        <td style="padding: 10px;">15 sec</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid #eee;">
-                        <td style="padding: 10px;">Generate Embeddings</td>
-                        <td style="padding: 10px;">Convert to 384-dimensional vectors</td>
-                        <td style="padding: 10px;">30 sec</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 10px;">Cluster</td>
-                        <td style="padding: 10px;">Group similar emails (HDBSCAN or K-Means)</td>
-                        <td style="padding: 10px;">5 sec</td>
-                    </tr>
-                </table>
-                
-                <h3 style="margin: 24px 0 12px; font-size: 1.1rem;">Calibrated Scoring</h3>
-                <p style="color: #555; margin-bottom: 8px;">Every email gets 4 dimensions scored 1-10:</p>
-                <ul style="margin-left: 20px; color: #555;">
-                    <li><strong>Formality:</strong> "yo" (1) → "Dear Mr. Smith" (10)</li>
-                    <li><strong>Warmth:</strong> "Per request" (1) → "So excited!" (10)</li>
-                    <li><strong>Authority:</strong> "I think maybe" (1) → "This is the approach" (10)</li>
-                    <li><strong>Directness:</strong> "wondering if perhaps" (1) → "No. Fix it." (10)</li>
-                </ul>
-                
-                <h3 style="margin: 24px 0 12px; font-size: 1.1rem;">Validation</h3>
-                <p style="color: #555;">Automatically tests generated prompt against held-out samples using embedding similarity. Threshold: 0.70 (cosine similarity). Typical results: 0.75-0.82.</p>
             </div>
         </div>
         
@@ -748,10 +673,10 @@
                     <div class="solution">Make sure your assistant ID is exactly <span class="id-highlight">writing-style</span></div>
                     
                     <div class="issue">"Skill not found"</div>
-                    <div class="solution">Click "Start Phase 1" - it will install automatically</div>
+                    <div class="solution">Click "Start Email Track" - it will install automatically</div>
                     
                     <div class="issue">Stuck in wrong phase</div>
-                    <div class="solution">Say "Check my writing style status" to see current state</div>
+                    <div class="solution">Say "Show project status" to see current state</div>
                     
                     <div class="issue">Want to start over</div>
                     <div class="solution">Ask the AI to delete <code>~/Documents/my-writing-style/</code> and restart</div>
@@ -765,7 +690,7 @@
     </div>
     
     <div class="footer">
-        <p><strong>Writing Style Clone v2</strong> • Built by John Renaldi • January 2025</p>
+        <p><strong>Writing Style Clone v2.1</strong> • Built by John Renaldi • January 2025</p>
         <p><a href="https://github.com/jrenaldi79/writing-style">github.com/jrenaldi79/writing-style</a> • <a href="README.md">Technical Documentation</a></p>
     </div>
     
