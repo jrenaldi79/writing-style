@@ -9,6 +9,7 @@ Usage:
     python fetch_emails.py [--count 100]           # First run: get 100 most recent
     python fetch_emails.py                          # Get new emails since last fetch
     python fetch_emails.py --older [--count 50]    # Get older emails (go back in history)
+    python fetch_emails.py --holdout 0.15          # Reserve 15% for validation
     python fetch_emails.py --status                 # Show fetch status
 """
 
@@ -23,6 +24,7 @@ from datetime import datetime
 MCP_COMMAND = ["npx", "-y", "@presto-ai/google-workspace-mcp"]
 DATA_DIR = Path.home() / "Documents" / "my-writing-style"
 OUTPUT_DIR = DATA_DIR / "raw_samples"
+VALIDATION_DIR = DATA_DIR / "validation_set"
 STATE_FILE = DATA_DIR / "fetch_state.json"
 
 
@@ -170,10 +172,19 @@ def show_status():
     print(f"{'═' * 50}\n")
 
 
-def fetch_emails(count=100, older=False):
-    """Fetch sent emails and save to raw_samples directory."""
+def fetch_emails(count=100, older=False, holdout=0.0):
+    """Fetch sent emails and save to raw_samples directory.
+    
+    Args:
+        count: Number of emails to fetch
+        older: Fetch older emails instead of newer
+        holdout: Fraction of emails to reserve for validation (0.0-0.5)
+    """
+    import random
     
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    if holdout > 0:
+        VALIDATION_DIR.mkdir(parents=True, exist_ok=True)
     state = load_state()
     
     # Build query
@@ -228,6 +239,12 @@ def fetch_emails(count=100, older=False):
             # Fetch full email
             email_json_str = client.call_tool("gmail.get", {"messageId": msg_id})
             email_data = json.loads(email_json_str)
+            
+            # Determine if this goes to validation set
+            is_holdout = holdout > 0 and random.random() < holdout
+            
+            if is_holdout:
+                file_path = VALIDATION_DIR / f"email_{msg_id}.json"
             
             # Save raw data
             with open(file_path, "w") as f:
@@ -298,6 +315,8 @@ Examples:
                         help="Number of emails to fetch (default: 100)")
     parser.add_argument("--older", action="store_true",
                         help="Fetch older emails (go back in history)")
+    parser.add_argument("--holdout", type=float, default=0.0,
+                        help="Fraction to reserve for validation (e.g., 0.15 for 15%%)")
     parser.add_argument("--status", action="store_true",
                         help="Show current fetch status")
     
@@ -306,4 +325,4 @@ Examples:
     if args.status:
         show_status()
     else:
-        fetch_emails(count=args.count, older=args.older)
+        fetch_emails(count=args.count, older=args.older, holdout=args.holdout)

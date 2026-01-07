@@ -1,0 +1,13 @@
+# Writing Style Clone v2 - Dependencies
+
+# Core preprocessing
+sentence-transformers>=2.2.0
+scikit-learn>=1.0.0
+numpy>=1.21.0
+
+# Optional: Better clustering (auto-detects cluster count)
+hdbscan>=0.8.0
+
+# Optional: Validation (choose one LLM provider)
+# anthropic>=0.18.0
+# openai>=1.0.0

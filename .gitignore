@@ -24,3 +24,9 @@ Thumbs.db
 
 # User data (never commit)
 # Note: The my-writing-style/ directory is created separately by users
+
+# Internal progress/operational files (not for public repo)
+docs/IMPLEMENTATION_PLAN.md
+docs/COMPLETION_SUMMARY.md
+PROJECT_STATUS.md
+tests/TEST_RESULTS.md
