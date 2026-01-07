@@ -2,50 +2,25 @@
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual environments
+*.so
+.env
 venv/
-ENV/
-env/
 .venv/
 
 # IDE
-.idea/
 .vscode/
+.idea/
 *.swp
 *.swo
 *~
 
 # OS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
-# Project-specific
-# Never commit personal data directories
-my-writing-style/
-*-writing-style/
+# Packaged skill
+*.skill
 
-# Logs
-*.log
+# User data (never commit)
+# Note: The my-writing-style/ directory is created separately by users
