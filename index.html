@@ -160,6 +160,70 @@
         }
         .key-concept strong { color: #2E7D32; }
         
+        .warning-concept {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+            border: 2px solid #ff9800;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+        }
+        .warning-concept strong { color: #e65100; }
+        
+        .assistant-reminder {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border: 2px solid #2196F3;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin: 16px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .assistant-reminder .icon { font-size: 1.5rem; }
+        .assistant-reminder strong { color: #1565C0; }
+        
+        /* Workflow sections */
+        .workflow-section {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            background: white;
+        }
+        .workflow-section.first-time {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+        }
+        .workflow-section.maintenance {
+            border-color: #9e9e9e;
+        }
+        .workflow-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid rgba(0,0,0,0.1);
+        }
+        .workflow-header h3 {
+            font-size: 1.2rem;
+            margin: 0;
+        }
+        .workflow-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+        .badge-required {
+            background: #667eea;
+            color: white;
+        }
+        .badge-optional {
+            background: #e0e0e0;
+            color: #666;
+        }
+        
         /* Phases */
         .phase {
             display: grid;
@@ -183,17 +247,17 @@
         .phase-2 .phase-number { background: #2196F3; }
         .phase-3 .phase-number { background: #FF9800; }
         
-        .phase-content h3 {
-            font-size: 1.2rem;
+        .phase-content h4 {
+            font-size: 1.1rem;
             margin-bottom: 4px;
             display: flex;
             align-items: center;
             gap: 10px;
             flex-wrap: wrap;
         }
-        .phase-1 h3 { color: #2E7D32; }
-        .phase-2 h3 { color: #1565C0; }
-        .phase-3 h3 { color: #E65100; }
+        .phase-1 h4 { color: #2E7D32; }
+        .phase-2 h4 { color: #1565C0; }
+        .phase-3 h4 { color: #E65100; }
         
         .phase-meta { font-size: 0.85rem; color: #888; margin-bottom: 10px; }
         .phase-trigger {
@@ -213,20 +277,25 @@
         }
         .phase-details li { margin-bottom: 4px; }
         
-        .new-chat {
-            background: #e8f5e9;
-            color: #2e7d32;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: bold;
+        .new-chat-alert {
+            background: #ffebee;
+            border: 2px solid #f44336;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
+        .new-chat-alert .icon { font-size: 1.2rem; }
+        .new-chat-alert strong { color: #c62828; }
         
         .arrow {
             text-align: center;
             font-size: 1.5rem;
-            color: #ccc;
+            color: #667eea;
             margin: -8px 0 12px 28px;
+            font-weight: bold;
         }
         
         /* Output box */
@@ -349,7 +418,7 @@
         
         <!-- Setup -->
         <div class="section">
-            <h2 class="section-title"><span class="icon">🚀</span> Getting Started (2 minutes)</h2>
+            <h2 class="section-title"><span class="icon">🚀</span> One-Time Setup (2 minutes)</h2>
             
             <div class="key-concept">
                 <strong>✨ No installation required!</strong> Just create an assistant and the AI sets everything up for you.
@@ -406,72 +475,109 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
                 </div>
                 
                 <div class="setup-step">
-                    <h3>Start a Chat and Say:</h3>
-                    <div class="prompt-box">
-                        <button class="copy-btn" onclick="copyPrompt(this, 'trigger-prompt')">Copy</button>
-                        <code id="trigger-prompt">Clone my writing style</code>
-                    </div>
-                    <p style="margin-top: 16px;">The AI will automatically download and install the skill, then guide you through the entire process. No terminal commands needed!</p>
+                    <h3>Save the Assistant</h3>
+                    <p>Click Save. You now have a <strong>"Writing Style Clone"</strong> assistant ready to use.</p>
+                    <p>You'll use this assistant for ALL interactions with this skill.</p>
                 </div>
             </div>
         </div>
         
-        <!-- Phases -->
+        <!-- Workflow -->
         <div class="section">
-            <h2 class="section-title"><span class="icon">🔄</span> The Three Phases</h2>
+            <h2 class="section-title"><span class="icon">🔄</span> The Workflow</h2>
             
-            <div class="key-concept" style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-color: #ff9800;">
-                <strong style="color: #e65100;">💡 Important:</strong> Start a <strong>new conversation</strong> for each phase to keep things fast.
+            <div class="warning-concept">
+                <strong>⚠️ Important:</strong> Always use your <strong>"Writing Style Clone"</strong> assistant for this workflow. Start a <strong>new conversation</strong> after each phase to keep things fast.
             </div>
             
-            <div class="card">
+            <!-- First Time -->
+            <div class="workflow-section first-time">
+                <div class="workflow-header">
+                    <h3>🎯 First Time Setup</h3>
+                    <span class="workflow-badge badge-required">Required • ~30 minutes total</span>
+                </div>
+                <p style="margin-bottom: 20px; color: #555;">Complete all three phases in order. Each phase requires a new conversation.</p>
+                
                 <div class="phase phase-1">
                     <div class="phase-number">1</div>
                     <div class="phase-content">
-                        <h3>Setup <span class="new-chat">New Chat</span></h3>
-                        <p class="phase-meta">5 minutes • One time only</p>
+                        <h4>Setup</h4>
+                        <p class="phase-meta">~5 minutes</p>
                         <div class="phase-trigger">"Clone my writing style"</div>
-                        <p class="phase-details">Installs the skill (if needed) and creates your workspace at <code>~/Documents/my-writing-style/</code></p>
+                        <p class="phase-details">Installs the skill (if needed) and creates your workspace.</p>
+                        <div class="new-chat-alert">
+                            <span class="icon">🔄</span>
+                            <span><strong>When complete:</strong> Close this chat. Open a NEW conversation with your "Writing Style Clone" assistant.</span>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="arrow">↓</div>
+                <div class="arrow">↓ New Conversation</div>
                 
                 <div class="phase phase-2">
                     <div class="phase-number">2</div>
                     <div class="phase-content">
-                        <h3>Analysis <span class="new-chat">New Chat</span></h3>
-                        <p class="phase-meta">15-20 minutes • Repeat monthly to improve</p>
+                        <h4>Analysis</h4>
+                        <p class="phase-meta">~15-20 minutes</p>
                         <div class="phase-trigger">"Continue cloning my writing style"</div>
                         <div class="phase-details">
-                            Fetches your emails and LinkedIn posts in batches, discovers your writing personas.
+                            Fetches your emails and LinkedIn posts, discovers your writing personas.
                             <ul>
                                 <li><strong>Goal:</strong> 50+ samples across 3+ personas</li>
                                 <li><strong>Commands:</strong> "Fetch my last 20 emails", "Show persona summary"</li>
                                 <li><strong>When done:</strong> Say "I'm ready to generate"</li>
                             </ul>
                         </div>
+                        <div class="new-chat-alert">
+                            <span class="icon">🔄</span>
+                            <span><strong>When complete:</strong> Close this chat. Open a NEW conversation with your "Writing Style Clone" assistant.</span>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="arrow">↓</div>
+                <div class="arrow">↓ New Conversation</div>
                 
                 <div class="phase phase-3">
                     <div class="phase-number">3</div>
                     <div class="phase-content">
-                        <h3>Generate <span class="new-chat">New Chat</span></h3>
-                        <p class="phase-meta">5 minutes • Regenerate quarterly</p>
+                        <h4>Generate</h4>
+                        <p class="phase-meta">~5 minutes</p>
                         <div class="phase-trigger">"Generate my writing assistant"</div>
-                        <p class="phase-details">Creates your personalized system prompt with all discovered personas and writing patterns.</p>
+                        <p class="phase-details">Creates your personalized writing assistant prompt with all discovered personas.</p>
                     </div>
+                </div>
+                
+                <div class="output" style="margin-top: 24px;">
+                    <div class="output-icon">🎯</div>
+                    <h3>Your Personalized Writing Assistant</h3>
+                    <p>Output: <code>~/Documents/my-writing-style/prompts/writing_assistant.md</code></p>
+                    <p style="margin-top: 8px;">Use with ChatGPT, Claude, or any AI writing tool</p>
                 </div>
             </div>
             
-            <div class="output">
-                <div class="output-icon">🎯</div>
-                <h3>Your Personalized Writing Assistant</h3>
-                <p>Output: <code>~/Documents/my-writing-style/prompts/writing_assistant.md</code></p>
-                <p style="margin-top: 8px;">Use with ChatGPT, Claude, or any AI writing tool</p>
+            <!-- Maintenance -->
+            <div class="workflow-section maintenance">
+                <div class="workflow-header">
+                    <h3>🔧 Ongoing Maintenance</h3>
+                    <span class="workflow-badge badge-optional">Optional • After initial setup</span>
+                </div>
+                <p style="margin-bottom: 16px; color: #555;">Keep your writing assistant up to date as your style evolves.</p>
+                
+                <div class="assistant-reminder">
+                    <span class="icon">💡</span>
+                    <span><strong>Remember:</strong> Always use your "Writing Style Clone" assistant for these tasks.</span>
+                </div>
+                
+                <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 12px 0; font-weight: 500; color: #666; width: 120px;">Monthly</td>
+                        <td style="padding: 12px 0;">Run 1-2 more analysis batches to capture style evolution<br><code style="background: #f5f5f5; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem;">"Continue cloning my writing style"</code></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 0; font-weight: 500; color: #666;">Quarterly</td>
+                        <td style="padding: 12px 0;">Regenerate your writing assistant with new patterns<br><code style="background: #f5f5f5; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem;">"Generate my writing assistant"</code></td>
+                    </tr>
+                </table>
             </div>
         </div>
         
@@ -553,7 +659,7 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
                     <div class="solution">Say "Clone my writing style" and the AI will install it automatically</div>
                     
                     <div class="issue">"No project found"</div>
-                    <div class="solution">Start with "Clone my writing style" first (Phase 1)</div>
+                    <div class="solution">Start with "Clone my writing style" (Phase 1) using your Writing Style Clone assistant</div>
                     
                     <div class="issue">Stuck in wrong phase</div>
                     <div class="solution">Say "Check my writing style status" to see current state</div>
@@ -563,20 +669,6 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
                     
                     <div class="issue">Gmail not working</div>
                     <div class="solution">Check that Gmail MCP is configured in ChatWise settings</div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Maintenance -->
-        <div class="section">
-            <h2 class="section-title"><span class="icon">🔄</span> Maintenance</h2>
-            <div class="card">
-                <div class="troubleshoot-grid">
-                    <div class="issue">Monthly</div>
-                    <div class="solution">Run 1-2 analysis batches to capture style evolution</div>
-                    
-                    <div class="issue">Quarterly</div>
-                    <div class="solution">Regenerate your writing assistant prompt with new patterns</div>
                 </div>
             </div>
         </div>
