@@ -41,34 +41,21 @@ After completion, tell user to start a **NEW conversation** for Phase 2.
 ### Batch Size
 Process **30-40 emails per batch** to maximize efficiency while staying within context limits.
 
-### Workflow (Token-Efficient)
+### Workflow (Optimized)
 
-1. **Read raw emails:**
-```python
-from pathlib import Path
-import json
-
-raw_dir = Path.home() / "Documents" / "my-writing-style" / "raw_samples"
-emails = sorted(raw_dir.glob("email_*.json"))[:40]  # First 40 unprocessed
-
-for email_file in emails:
-    with open(email_file) as f:
-        data = json.load(f)
-    # Analyze: subject, body, to, snippet
+1. **Fetch and Format Data (1 Step):**
+   Run this script to auto-discover unprocessed emails and format them cleanly:
+```bash
+cd ~/Documents/my-writing-style && python3 prepare_batch.py --count 40
 ```
 
-2. **Analyze each email** using schema in `references/analysis_schema.md`:
-   - Tone, formality, sentence/paragraph style
-   - Greeting and closing patterns
-   - Punctuation habits, contractions
-   - Notable phrases and structure
+2. **Analyze & Cluster:**
+   - Read the output from Step 1.
+   - Analyze tone, formality, sentence structure, and signature.
+   - Cluster into personas (create new ones or match existing).
 
-3. **Cluster into personas:**
-   - Group similar samples by tone + formality + structure
-   - Create new persona if 3+ samples cluster together
-   - Use specific names: "Executive Brief" not "Formal Email"
-
-4. **Output single JSON file** following `references/batch_schema.md`:
+3. **Output Analysis (1 Step):**
+   Create a single JSON file following `references/batch_schema.md`:
 ```json
 {
   "batch_id": "batch_001",
@@ -76,11 +63,11 @@ for email_file in emails:
   "samples": [...]
 }
 ```
-Save to: `~/Documents/my-writing-style/batches/batch_001.json`
+   Save to: `~/Documents/my-writing-style/batches/batch_NNN.json`
 
-5. **Run ingest:**
+4. **Ingest (1 Step):**
 ```bash
-cd ~/Documents/my-writing-style && python3 ingest.py batches/batch_001.json
+cd ~/Documents/my-writing-style && python3 ingest.py batches/batch_NNN.json
 ```
 
 ### Why JSON Instead of Python Scripts?
@@ -111,7 +98,7 @@ Ready for generation: No (need 50+ samples)
 ### Available Commands
 | Command | Action |
 |---------|--------|
-| `Analyze next batch` | Process next 30-40 raw emails |
+| `Analyze next batch` | Run `prepare_batch.py` again |
 | `Show status` | Run `python ingest.py --status` |
 | `I'm ready to generate` | Mark ready, prompt for new conversation |
 
@@ -119,7 +106,7 @@ Ready for generation: No (need 50+ samples)
 When user has 50+ samples across 3+ personas:
 ```python
 from state_manager import mark_ready_for_generation
-mark_ready_for_generation()
+mark_ready_for_generation(".")
 ```
 
 Tell user to start a **NEW conversation** for Phase 3.
@@ -163,7 +150,7 @@ with open(output_path, "w") as f:
 5. **Update state:**
 ```python
 from state_manager import complete_generation
-complete_generation(str(output_path))
+complete_generation(str(output_path), ".")
 ```
 
 ## Scripts Reference
@@ -171,6 +158,7 @@ complete_generation(str(output_path))
 | Script | Purpose |
 |--------|---------|
 | `fetch_emails.py` | Bulk download emails via MCP |
+| `prepare_batch.py` | Smart fetch & format of raw emails for analysis |
 | `ingest.py` | Process batch JSON, update personas/samples |
 | `state_manager.py` | Phase tracking across conversations |
 | `style_manager.py` | Persona management utilities |

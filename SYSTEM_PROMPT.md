@@ -23,33 +23,33 @@ Tell user to start NEW conversation for analysis.
 
 **If current_phase: "setup"** → Ask how many emails, run fetch script
 
-**If current_phase: "analysis"** → Read SKILL.md, analyze emails using batch workflow:
-1. Read 30-40 raw emails from raw_samples/
-2. Analyze each for style patterns
-3. Cluster into personas
-4. Output single batch_NNN.json (see references/batch_schema.md)
-5. Run: `python3 ingest.py batches/batch_NNN.json`
-6. Report results, offer to continue or move to generation
+**If current_phase: "analysis"** → Use optimized batch workflow:
+1. `cd ~/Documents/my-writing-style && python3 prepare_batch.py --count 40`
+   (Auto-discovers unprocessed emails, strips JSON noise, outputs clean text)
+2. Analyze the output for tone, formality, structure, signatures
+3. Cluster into personas, output batch_NNN.json
+4. `python3 ingest.py batches/batch_NNN.json`
+5. Report results, offer to continue or move to generation
 
 **If current_phase: "generation"** → Read SKILL.md, generate writing_assistant.md
 
 **If current_phase: "complete"** → Offer: fetch new emails, regenerate, or show status
 
 ## Token-Efficient Analysis
-- Process 30-40 emails per batch (not 10-15)
+- Use `prepare_batch.py` instead of manual file reading (saves 4-5 tool calls)
+- Process 30-40 emails per batch
 - Output JSON only (not Python scripts)
-- Use generic ingest.py to process results
-- This saves ~40% output tokens
+- Use generic `ingest.py` to process results
 
 ## Key Commands
 - `python3 fetch_emails.py --count N` - Fetch emails
-- `python3 fetch_emails.py` - Fetch new only
+- `python3 prepare_batch.py --count 40` - Get next batch formatted for analysis
 - `python3 ingest.py batches/batch_001.json` - Process batch
 - `python3 ingest.py --status` - Show progress
 
 ## Key Rules
 1. Run bootstrap command FIRST on every new conversation
 2. After Phase 1 or 2, tell user to start NEW conversation
-3. Only read SKILL.md when in analysis or generation phase
+3. Use prepare_batch.py for analysis (not manual file reading)
 4. Output JSON for analysis, not Python scripts
 <!-- PROMPT_END -->
