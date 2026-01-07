@@ -20,7 +20,7 @@ from pathlib import Path
 from datetime import datetime
 
 # Configuration
-MCP_COMMAND = ["npx", "-y", "@anthropic-ai/google-workspace-mcp"]
+MCP_COMMAND = ["npx", "-y", "@presto-ai/google-workspace-mcp"]
 DATA_DIR = Path.home() / "Documents" / "my-writing-style"
 OUTPUT_DIR = DATA_DIR / "raw_samples"
 STATE_FILE = DATA_DIR / "fetch_state.json"
