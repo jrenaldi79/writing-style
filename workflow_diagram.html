@@ -25,75 +25,125 @@
             padding: 40px 20px;
         }
         
+        /* Section titles */
+        .section-title {
+            text-align: center;
+            font-size: 1.4rem;
+            color: #333;
+            margin: 40px 0 20px;
+        }
+        .section-title:first-of-type { margin-top: 0; }
+        
+        /* Install steps */
+        .install-steps {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .install-step {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+        .install-step h3 {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+        }
+        .install-step h3 .num {
+            background: #667eea;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+        }
+        .install-step code {
+            display: block;
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            margin-top: 8px;
+            overflow-x: auto;
+        }
+        .install-step p { color: #555; font-size: 0.95rem; }
+        
         /* Key concept */
         .key-concept {
             background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
             border: 2px solid #ff9800;
             border-radius: 12px;
             padding: 20px;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
             text-align: center;
         }
         .key-concept h3 { color: #e65100; margin-bottom: 8px; }
         .key-concept p { color: #555; }
         
         /* Flow */
-        .flow { display: flex; flex-direction: column; gap: 20px; margin-bottom: 40px; }
+        .flow { display: flex; flex-direction: column; gap: 16px; margin-bottom: 40px; }
         .phase {
             background: white;
-            border-radius: 16px;
-            padding: 28px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
             display: grid;
-            grid-template-columns: 60px 1fr;
-            gap: 20px;
+            grid-template-columns: 50px 1fr;
+            gap: 16px;
             align-items: start;
         }
         .phase-number {
-            width: 50px; height: 50px;
+            width: 44px; height: 44px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             font-weight: bold;
         }
         .phase-1 .phase-number { background: #4CAF50; }
         .phase-2 .phase-number { background: #2196F3; }
         .phase-3 .phase-number { background: #FF9800; }
         
-        .phase-content h2 { font-size: 1.4rem; margin-bottom: 4px; }
+        .phase-content h2 { font-size: 1.2rem; margin-bottom: 4px; }
         .phase-1 h2 { color: #2E7D32; }
         .phase-2 h2 { color: #1565C0; }
         .phase-3 h2 { color: #E65100; }
         
-        .phase-meta { font-size: 0.85rem; color: #888; margin-bottom: 12px; }
+        .phase-meta { font-size: 0.8rem; color: #888; margin-bottom: 8px; }
         .phase-trigger {
             background: #f5f5f5;
-            padding: 10px 16px;
-            border-radius: 8px;
+            padding: 8px 14px;
+            border-radius: 6px;
             font-family: monospace;
-            font-size: 0.9rem;
-            margin-bottom: 12px;
+            font-size: 0.85rem;
+            display: inline-block;
+            margin-bottom: 8px;
             color: #333;
         }
-        .phase-details { color: #555; font-size: 0.95rem; line-height: 1.6; }
+        .phase-details { color: #555; font-size: 0.9rem; line-height: 1.5; }
         
         .arrow {
             text-align: center;
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             color: #ccc;
-            margin: -10px 0;
         }
         .new-chat {
             background: #e8f5e9;
             color: #2e7d32;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
             font-weight: bold;
-            display: inline-block;
             margin-left: 8px;
         }
         
@@ -101,94 +151,89 @@
         .output {
             background: linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%);
             border: 2px solid #9C27B0;
-            border-radius: 16px;
-            padding: 32px;
+            border-radius: 12px;
+            padding: 28px;
             text-align: center;
             margin-bottom: 40px;
         }
-        .output-icon { font-size: 3rem; margin-bottom: 12px; }
-        .output h3 { color: #6A1B9A; font-size: 1.4rem; margin-bottom: 8px; }
-        .output p { color: #555; }
+        .output-icon { font-size: 2.5rem; margin-bottom: 10px; }
+        .output h3 { color: #6A1B9A; font-size: 1.2rem; margin-bottom: 6px; }
+        .output p { color: #555; font-size: 0.9rem; }
         .output code {
             background: rgba(0,0,0,0.1);
-            padding: 4px 12px;
-            border-radius: 6px;
-            font-size: 0.9rem;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.85rem;
         }
-        
-        /* How it remembers */
-        .state-box {
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-            margin-bottom: 40px;
-        }
-        .state-box h3 { text-align: center; margin-bottom: 16px; color: #333; }
-        .state-visual {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-        .state-item {
-            background: #f5f5f5;
-            padding: 16px 24px;
-            border-radius: 8px;
-            text-align: center;
-        }
-        .state-item .icon { font-size: 2rem; margin-bottom: 8px; }
-        .state-item h4 { font-size: 0.9rem; color: #333; margin-bottom: 4px; }
-        .state-item p { font-size: 0.8rem; color: #666; }
         
         /* Before/After */
         .comparison {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 24px;
+            gap: 20px;
             margin-bottom: 40px;
         }
         .comparison-box {
             background: white;
             border-radius: 12px;
-            padding: 24px;
+            padding: 20px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.08);
         }
-        .comparison-box h4 { margin-bottom: 16px; font-size: 1.1rem; }
+        .comparison-box h4 { margin-bottom: 12px; font-size: 1rem; }
         .comparison-box.before h4 { color: #999; }
         .comparison-box.after h4 { color: #4CAF50; }
         .comparison-box blockquote {
             font-style: italic;
             color: #555;
-            line-height: 1.6;
+            line-height: 1.5;
             border-left: 3px solid #ddd;
-            padding-left: 16px;
+            padding-left: 14px;
+            font-size: 0.9rem;
         }
         .comparison-box.after blockquote { border-left-color: #4CAF50; }
+        
+        /* File structure */
+        .files {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            margin-bottom: 40px;
+        }
+        .files h3 { text-align: center; margin-bottom: 16px; }
+        .files pre {
+            background: #f5f5f5;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            overflow-x: auto;
+        }
         
         /* CTA */
         .cta {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 16px;
-            padding: 40px;
+            border-radius: 12px;
+            padding: 32px;
             text-align: center;
             color: white;
         }
-        .cta h3 { font-size: 1.5rem; margin-bottom: 16px; }
-        .cta p { opacity: 0.9; margin-bottom: 20px; }
-        .cta ol {
-            display: inline-block;
-            text-align: left;
-            background: rgba(255,255,255,0.15);
-            padding: 20px 30px;
-            border-radius: 12px;
-            list-style-position: inside;
+        .cta h3 { font-size: 1.3rem; margin-bottom: 12px; }
+        .cta p { opacity: 0.9; margin-bottom: 16px; font-size: 0.95rem; }
+        .cta code {
+            display: block;
+            background: rgba(255,255,255,0.2);
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            margin: 0 auto;
+            max-width: 400px;
         }
-        .cta li { padding: 6px 0; }
         
         @media (max-width: 768px) {
             .header h1 { font-size: 1.8rem; }
+            .install-steps { grid-template-columns: 1fr; }
             .phase { grid-template-columns: 1fr; }
+            .phase-number { margin-bottom: 8px; }
             .comparison { grid-template-columns: 1fr; }
         }
     </style>
@@ -196,14 +241,30 @@
 <body>
     <div class="header">
         <h1>Writing Style Clone</h1>
-        <p>A skill that trains AI to write in your authentic voice</p>
+        <p>A skill that trains AI to write in your authentic voice • ~30 min setup</p>
     </div>
     
     <div class="container">
         
+        <h2 class="section-title">📦 Installation (5 minutes)</h2>
+        
+        <div class="install-steps">
+            <div class="install-step">
+                <h3><span class="num">1</span> Clone the Repository</h3>
+                <p>Open Terminal and run:</p>
+                <code>cd ~/Documents<br>git clone https://github.com/jrenaldi79/writing-style.git</code>
+            </div>
+            <div class="install-step">
+                <h3><span class="num">2</span> Create ChatWise Assistant</h3>
+                <p>Create a new assistant named <strong>"Writing Style Clone"</strong> and paste the contents of <code>CHATWISE_PROMPT.md</code> as the system prompt.</p>
+            </div>
+        </div>
+        
+        <h2 class="section-title">🔄 The Three Phases</h2>
+        
         <div class="key-concept">
             <h3>💡 One Skill, Three Phases</h3>
-            <p>Install the skill once. Run each phase in a <strong>new conversation</strong> to keep things fast.</p>
+            <p>Start a <strong>new conversation</strong> for each phase to keep things fast.</p>
         </div>
         
         <div class="flow">
@@ -213,10 +274,7 @@
                     <h2>Setup <span class="new-chat">New Chat</span></h2>
                     <p class="phase-meta">5 minutes • One time only</p>
                     <div class="phase-trigger">"Clone my writing style"</div>
-                    <p class="phase-details">
-                        Creates your workspace at <code>~/Documents/my-writing-style/</code> and initializes the project. 
-                        When done, Claude tells you to start a new conversation.
-                    </p>
+                    <p class="phase-details">Creates your workspace and initializes the project.</p>
                 </div>
             </div>
             
@@ -226,13 +284,9 @@
                 <div class="phase-number">2</div>
                 <div class="phase-content">
                     <h2>Analysis <span class="new-chat">New Chat</span></h2>
-                    <p class="phase-meta">15-20 minutes • Repeat monthly to improve</p>
+                    <p class="phase-meta">15-20 minutes • Repeat monthly</p>
                     <div class="phase-trigger">"Continue cloning my writing style"</div>
-                    <p class="phase-details">
-                        Claude fetches your emails and LinkedIn posts in batches, discovers your writing patterns, 
-                        and clusters them into personas like "Team Leader" or "1:1 Coach". 
-                        Run multiple batches until you have 50+ samples.
-                    </p>
+                    <p class="phase-details">Fetches emails/LinkedIn, discovers your writing personas. Run until 50+ samples.</p>
                 </div>
             </div>
             
@@ -242,12 +296,9 @@
                 <div class="phase-number">3</div>
                 <div class="phase-content">
                     <h2>Generate <span class="new-chat">New Chat</span></h2>
-                    <p class="phase-meta">5 minutes • Regenerate quarterly</p>
+                    <p class="phase-meta">5 minutes • Quarterly</p>
                     <div class="phase-trigger">"Generate my writing assistant"</div>
-                    <p class="phase-details">
-                        Claude synthesizes all your personas into a single, powerful system prompt 
-                        that any AI can use to write in your voice.
-                    </p>
+                    <p class="phase-details">Creates your personalized system prompt with all your voices.</p>
                 </div>
             </div>
         </div>
@@ -255,32 +306,12 @@
         <div class="output">
             <div class="output-icon">🎯</div>
             <h3>Your Personalized Writing Assistant</h3>
-            <p>Saved at: <code>~/Documents/my-writing-style/prompts/writing_assistant.md</code></p>
-            <p style="margin-top: 8px;">Use it with ChatGPT, Claude, or any AI writing tool</p>
+            <p>Output: <code>~/Documents/my-writing-style/prompts/writing_assistant.md</code></p>
+            <p style="margin-top: 6px;">Use with ChatGPT, Claude, or any AI writing tool</p>
         </div>
         
-        <div class="state-box">
-            <h3>How the Skill Remembers Your Progress</h3>
-            <div class="state-visual">
-                <div class="state-item">
-                    <div class="icon">📁</div>
-                    <h4>state.json</h4>
-                    <p>Tracks current phase</p>
-                </div>
-                <div class="state-item">
-                    <div class="icon">👥</div>
-                    <h4>persona_registry.json</h4>
-                    <p>Your discovered voices</p>
-                </div>
-                <div class="state-item">
-                    <div class="icon">📝</div>
-                    <h4>samples/</h4>
-                    <p>Analyzed writing</p>
-                </div>
-            </div>
-        </div>
+        <h2 class="section-title">✨ The Difference</h2>
         
-        <h2 style="text-align: center; margin-bottom: 24px;">The Difference</h2>
         <div class="comparison">
             <div class="comparison-box before">
                 <h4>❌ Generic AI</h4>
@@ -294,22 +325,34 @@
                 <h4>✅ Your Voice</h4>
                 <blockquote>
                     Team,<br><br>
-                    Quick update on Q2 priorities. We're shifting focus to the customer dashboard—I'll share the full roadmap Thursday.<br><br>
+                    Quick update on Q2 priorities. We're shifting focus to the customer dashboard.<br><br>
                     Three things I need by EOD Wednesday: [...]<br><br>
                     -John
                 </blockquote>
             </div>
         </div>
         
+        <h2 class="section-title">📁 What Gets Created</h2>
+        
+        <div class="files">
+            <pre>~/Documents/
+├── writing-style/              # Skill (from GitHub)
+│   ├── skill/SKILL.md          # Main instructions
+│   ├── CHATWISE_PROMPT.md      # System prompt to copy
+│   └── TEAM_GUIDE.md           # This guide
+│
+└── my-writing-style/           # Your data (created by skill)
+    ├── state.json              # Progress tracking
+    ├── persona_registry.json   # Discovered personas
+    ├── samples/                # Analyzed writing
+    └── prompts/
+        └── writing_assistant.md   ← YOUR OUTPUT</pre>
+        </div>
+        
         <div class="cta">
             <h3>Ready to Get Started?</h3>
-            <p>~30 minutes to create your personalized writing assistant</p>
-            <ol>
-                <li>Get the skill file from John</li>
-                <li>Install it in Claude</li>
-                <li>Say "Clone my writing style"</li>
-                <li>Follow the prompts (new chat for each phase)</li>
-            </ol>
+            <p>Clone the repo, create your assistant, and say:</p>
+            <code>"Clone my writing style"</code>
         </div>
         
     </div>
