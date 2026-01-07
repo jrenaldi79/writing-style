@@ -6,7 +6,10 @@ Runs outside of Claude to efficiently fetch emails without using tokens.
 Saves raw email data to ~/Documents/my-writing-style/raw_samples/
 
 Usage:
-    python fetch_emails.py [--count 20]
+    python fetch_emails.py [--count 100]           # First run: get 100 most recent
+    python fetch_emails.py                          # Get new emails since last fetch
+    python fetch_emails.py --older [--count 50]    # Get older emails (go back in history)
+    python fetch_emails.py --status                 # Show fetch status
 """
 
 import subprocess
@@ -14,10 +17,13 @@ import json
 import sys
 import argparse
 from pathlib import Path
+from datetime import datetime
 
 # Configuration
 MCP_COMMAND = ["npx", "-y", "@anthropic-ai/google-workspace-mcp"]
-OUTPUT_DIR = Path.home() / "Documents" / "my-writing-style" / "raw_samples"
+DATA_DIR = Path.home() / "Documents" / "my-writing-style"
+OUTPUT_DIR = DATA_DIR / "raw_samples"
+STATE_FILE = DATA_DIR / "fetch_state.json"
 
 
 class MCPClient:
@@ -99,36 +105,123 @@ class MCPClient:
         self.process.terminate()
 
 
-def fetch_emails(count=20):
+def load_state():
+    """Load fetch state from file."""
+    if STATE_FILE.exists():
+        with open(STATE_FILE) as f:
+            return json.load(f)
+    return {
+        "total_fetched": 0,
+        "newest_timestamp": None,
+        "oldest_timestamp": None,
+        "newest_id": None,
+        "oldest_id": None,
+        "last_fetch": None,
+        "fetched_ids": []
+    }
+
+
+def save_state(state):
+    """Save fetch state to file."""
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with open(STATE_FILE, "w") as f:
+        json.dump(state, f, indent=2)
+
+
+def get_email_timestamp(email_data):
+    """Extract timestamp from email data."""
+    # Try internalDate first (milliseconds since epoch)
+    if "internalDate" in email_data:
+        return int(email_data["internalDate"])
+    # Fallback to parsing date header
+    return 0
+
+
+def show_status():
+    """Display current fetch status."""
+    state = load_state()
+    
+    # Count actual files
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    file_count = len(list(OUTPUT_DIR.glob("email_*.json")))
+    
+    print(f"\n{'═' * 50}")
+    print("EMAIL FETCH STATUS")
+    print(f"{'═' * 50}")
+    print(f"Emails downloaded: {file_count}")
+    print(f"Location: {OUTPUT_DIR}")
+    
+    if state["last_fetch"]:
+        print(f"Last fetch: {state['last_fetch']}")
+    
+    if state["newest_timestamp"]:
+        newest = datetime.fromtimestamp(state["newest_timestamp"] / 1000)
+        print(f"Newest email: {newest.strftime('%Y-%m-%d %H:%M')}")
+    
+    if state["oldest_timestamp"]:
+        oldest = datetime.fromtimestamp(state["oldest_timestamp"] / 1000)
+        print(f"Oldest email: {oldest.strftime('%Y-%m-%d %H:%M')}")
+    
+    print(f"{'═' * 50}")
+    print("\nCommands:")
+    print("  python fetch_emails.py --count 100    # Fetch 100 emails")
+    print("  python fetch_emails.py                # Fetch new emails")
+    print("  python fetch_emails.py --older        # Fetch older emails")
+    print(f"{'═' * 50}\n")
+
+
+def fetch_emails(count=100, older=False):
     """Fetch sent emails and save to raw_samples directory."""
     
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    state = load_state()
+    
+    # Build query
+    query = "from:me"
+    
+    if older and state["oldest_timestamp"]:
+        # Get emails older than our oldest
+        oldest_date = datetime.fromtimestamp(state["oldest_timestamp"] / 1000)
+        query += f" before:{oldest_date.strftime('%Y/%m/%d')}"
+        print(f"🔍 Fetching emails older than {oldest_date.strftime('%Y-%m-%d')}...")
+    elif not older and state["newest_timestamp"]:
+        # Get emails newer than our newest
+        newest_date = datetime.fromtimestamp(state["newest_timestamp"] / 1000)
+        query += f" after:{newest_date.strftime('%Y/%m/%d')}"
+        print(f"🔍 Fetching emails newer than {newest_date.strftime('%Y-%m-%d')}...")
+    else:
+        print(f"🔍 Fetching {count} most recent emails...")
+    
     client = MCPClient(MCP_COMMAND)
     
     try:
         client.initialize()
 
         # Search for sent emails
-        print(f"🔍 Searching for last {count} sent emails...")
         search_result_json = client.call_tool("gmail.search", {
-            "query": "from:me",
+            "query": query,
             "maxResults": count
         })
         search_data = json.loads(search_result_json)
         messages = search_data.get("messages", [])
+        
+        if not messages:
+            print("No new emails found.")
+            return 0
         
         print(f"Found {len(messages)} emails. Downloading...")
 
         # Fetch each email
         downloaded = 0
         skipped = 0
+        timestamps = []
         
         for msg in messages:
             msg_id = msg["id"]
             file_path = OUTPUT_DIR / f"email_{msg_id}.json"
             
             # Skip if already downloaded
-            if file_path.exists():
+            if file_path.exists() or msg_id in state.get("fetched_ids", []):
                 skipped += 1
                 continue
 
@@ -140,17 +233,45 @@ def fetch_emails(count=20):
             with open(file_path, "w") as f:
                 json.dump(email_data, f, indent=2)
             
+            # Track timestamp
+            ts = get_email_timestamp(email_data)
+            if ts:
+                timestamps.append(ts)
+            
+            # Track ID
+            if "fetched_ids" not in state:
+                state["fetched_ids"] = []
+            state["fetched_ids"].append(msg_id)
+            
             downloaded += 1
             snippet = email_data.get("snippet", "")[:40]
             print(f"  ✓ {msg_id}: {snippet}...")
 
-        print(f"\n{'═' * 40}")
+        # Update state
+        if timestamps:
+            if state["newest_timestamp"] is None or max(timestamps) > state["newest_timestamp"]:
+                state["newest_timestamp"] = max(timestamps)
+            if state["oldest_timestamp"] is None or min(timestamps) < state["oldest_timestamp"]:
+                state["oldest_timestamp"] = min(timestamps)
+        
+        state["total_fetched"] = len(state.get("fetched_ids", []))
+        state["last_fetch"] = datetime.now().isoformat()
+        save_state(state)
+
+        # Report
+        print(f"\n{'═' * 50}")
         print(f"FETCH COMPLETE")
-        print(f"{'═' * 40}")
+        print(f"{'═' * 50}")
         print(f"Downloaded: {downloaded} new emails")
         print(f"Skipped: {skipped} (already existed)")
+        print(f"Total in collection: {state['total_fetched']}")
         print(f"Location: {OUTPUT_DIR}")
-        print(f"{'═' * 40}")
+        print(f"{'═' * 50}")
+        
+        if downloaded > 0:
+            print(f"\n💡 Next steps:")
+            print(f"   • Run again with --older to fetch more history")
+            print(f"   • Start analysis in ChatWise: 'Continue cloning my writing style'")
         
         return downloaded
 
@@ -162,8 +283,27 @@ def fetch_emails(count=20):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Fetch sent emails via Gmail MCP")
-    parser.add_argument("--count", type=int, default=20, help="Number of emails to fetch")
+    parser = argparse.ArgumentParser(
+        description="Fetch sent emails via Gmail MCP",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python fetch_emails.py --count 100    # First run: get 100 most recent
+  python fetch_emails.py                # Get new emails since last fetch  
+  python fetch_emails.py --older        # Get older emails (go back in history)
+  python fetch_emails.py --status       # Show fetch status
+        """
+    )
+    parser.add_argument("--count", type=int, default=100, 
+                        help="Number of emails to fetch (default: 100)")
+    parser.add_argument("--older", action="store_true",
+                        help="Fetch older emails (go back in history)")
+    parser.add_argument("--status", action="store_true",
+                        help="Show current fetch status")
+    
     args = parser.parse_args()
     
-    fetch_emails(args.count)
+    if args.status:
+        show_status()
+    else:
+        fetch_emails(count=args.count, older=args.older)
