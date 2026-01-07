@@ -73,80 +73,31 @@
             font-weight: 500;
         }
         
-        /* Setup steps */
-        .setup-steps {
-            counter-reset: step;
+        /* Big CTA button */
+        .cta-section {
+            text-align: center;
+            margin: 40px 0;
         }
-        .setup-step {
-            position: relative;
-            padding-left: 70px;
-            margin-bottom: 30px;
-        }
-        .setup-step::before {
-            counter-increment: step;
-            content: counter(step);
-            position: absolute;
-            left: 0;
-            top: 0;
-            background: #667eea;
-            color: white;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.4rem;
-            font-weight: bold;
-        }
-        .setup-step h3 {
-            font-size: 1.15rem;
-            margin-bottom: 10px;
-            color: #333;
-        }
-        .setup-step p { color: #555; margin-bottom: 12px; }
-        
-        /* Prompt box */
-        .prompt-box {
-            background: #1e1e1e;
-            border-radius: 10px;
-            padding: 20px;
-            position: relative;
-            margin-top: 12px;
-        }
-        .prompt-box code {
-            color: #e6e6e6;
-            font-family: 'SF Mono', Monaco, Consolas, monospace;
-            font-size: 0.9rem;
-            line-height: 1.6;
-            white-space: pre-wrap;
-            display: block;
-        }
-        .prompt-box .copy-btn {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            background: #444;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .prompt-box .copy-btn:hover { background: #555; }
-        .prompt-box .copy-btn.copied { background: #4CAF50; }
-        
-        .prompt-label {
-            background: #667eea;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: bold;
+        .cta-button {
             display: inline-block;
-            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 1.3rem;
+            font-weight: bold;
+            padding: 20px 48px;
+            border-radius: 12px;
+            text-decoration: none;
+            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.4);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(102, 126, 234, 0.5);
+        }
+        .cta-subtitle {
+            margin-top: 16px;
+            color: #666;
+            font-size: 0.95rem;
         }
         
         /* Key concept banner */
@@ -380,8 +331,7 @@
             .phase-number { margin-bottom: 10px; }
             .troubleshoot-grid { grid-template-columns: 1fr; }
             .troubleshoot-grid .issue { margin-top: 10px; }
-            .setup-step { padding-left: 60px; }
-            .setup-step::before { width: 44px; height: 44px; font-size: 1.2rem; }
+            .cta-button { font-size: 1.1rem; padding: 16px 32px; }
         }
     </style>
 </head>
@@ -416,69 +366,19 @@
             </div>
         </div>
         
-        <!-- Setup -->
+        <!-- One-Click Start -->
         <div class="section">
-            <h2 class="section-title"><span class="icon">🚀</span> One-Time Setup (2 minutes)</h2>
+            <h2 class="section-title"><span class="icon">🚀</span> Get Started</h2>
             
             <div class="key-concept">
-                <strong>✨ No installation required!</strong> Just create an assistant and the AI sets everything up for you.
+                <strong>✨ One click to start!</strong> Click the button below to open ChatWise with everything pre-configured.
             </div>
             
-            <div class="setup-steps">
-                <div class="setup-step">
-                    <h3>Create a ChatWise Assistant</h3>
-                    <p>In ChatWise, create a new assistant named <strong>"Writing Style Clone"</strong></p>
-                    <p>For the system prompt, copy and paste this entire block:</p>
-                    
-                    <div class="prompt-box">
-                        <button class="copy-btn" onclick="copyPrompt(this, 'system-prompt')">Copy</button>
-                        <code id="system-prompt">You are a writing style analysis assistant powered by the Writing Style Clone skill.
-
-## Skill Location
-The skill should be at: ~/Documents/writing-style/skill/
-
-## First: Check Installation
-Check if ~/Documents/writing-style/skill/SKILL.md exists.
-- If NOT: Offer to install from https://github.com/jrenaldi79/writing-style
-- If YES: Check ~/Documents/my-writing-style/state.json for current phase
-
-## Installation (if needed)
-If user agrees to install, run:
-```
-mkdir -p ~/Documents/writing-style && cd ~/Documents/writing-style && curl -L https://github.com/jrenaldi79/writing-style/archive/refs/heads/main.zip -o repo.zip && unzip -q repo.zip && mv writing-style-main/* . && rm -rf writing-style-main repo.zip
-```
-Then confirm: "Writing Style Clone installed! Say 'Clone my writing style' to begin."
-
-## Trigger Phrases
-- "Clone my writing style" → Start/continue the workflow
-- "Continue cloning my writing style" → Resume analysis
-- "Generate my writing assistant" → Create final prompt
-- "Check my writing style status" → Show current state
-
-## Phase Detection
-Read state.json to determine phase:
-- No state.json → Phase 1: Setup
-- current_phase: "analysis" → Phase 2: Analysis  
-- current_phase: "generation" → Phase 3: Generate
-- current_phase: "complete" → Offer maintenance options
-
-## Core Workflow
-Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instructions.
-
-## Key Behaviors
-1. Always check installation status first
-2. Route to correct phase based on state.json
-3. Use scripts from ~/Documents/my-writing-style/
-4. After each phase, tell user to start a NEW conversation
-5. Be concise and action-oriented</code>
-                    </div>
-                </div>
-                
-                <div class="setup-step">
-                    <h3>Save the Assistant</h3>
-                    <p>Click Save. You now have a <strong>"Writing Style Clone"</strong> assistant ready to use.</p>
-                    <p>You'll use this assistant for ALL interactions with this skill.</p>
-                </div>
+            <div class="cta-section">
+                <a href="chatwise://chat?prompt=You%20are%20a%20writing%20style%20analysis%20assistant%20powered%20by%20the%20Writing%20Style%20Clone%20skill.%0A%0A%23%23%20Skill%20Location%0AThe%20skill%20should%20be%20at%3A%20~%2FDocuments%2Fwriting-style%2Fskill%2F%0A%0A%23%23%20First%3A%20Check%20Installation%0ACheck%20if%20~%2FDocuments%2Fwriting-style%2Fskill%2FSKILL.md%20exists.%0A-%20If%20NOT%3A%20Install%20from%20https%3A%2F%2Fgithub.com%2Fjrenaldi79%2Fwriting-style%0A-%20If%20YES%3A%20Check%20~%2FDocuments%2Fmy-writing-style%2Fstate.json%20for%20current%20phase%0A%0A%23%23%20Installation%20(if%20needed)%0AIf%20skill%20not%20found%2C%20run%3A%0A%60%60%60%0Amkdir%20-p%20~%2FDocuments%2Fwriting-style%20%26%26%20cd%20~%2FDocuments%2Fwriting-style%20%26%26%20curl%20-L%20https%3A%2F%2Fgithub.com%2Fjrenaldi79%2Fwriting-style%2Farchive%2Frefs%2Fheads%2Fmain.zip%20-o%20repo.zip%20%26%26%20unzip%20-q%20repo.zip%20%26%26%20mv%20writing-style-main%2F*%20.%20%26%26%20rm%20-rf%20writing-style-main%20repo.zip%0A%60%60%60%0AThen%20confirm%20installation%20and%20proceed.%0A%0A%23%23%20Phase%20Detection%0ARead%20state.json%20to%20determine%20phase%3A%0A-%20No%20state.json%20%E2%86%92%20Phase%201%3A%20Setup%0A-%20current_phase%3A%20%22analysis%22%20%E2%86%92%20Phase%202%3A%20Analysis%0A-%20current_phase%3A%20%22generation%22%20%E2%86%92%20Phase%203%3A%20Generate%0A-%20current_phase%3A%20%22complete%22%20%E2%86%92%20Offer%20maintenance%0A%0A%23%23%20Core%20Workflow%0AAlways%20read%20~%2FDocuments%2Fwriting-style%2Fskill%2FSKILL.md%20for%20detailed%20instructions.%0A%0A%23%23%20Key%20Behaviors%0A1.%20Check%20installation%20status%20first%0A2.%20Route%20to%20correct%20phase%20based%20on%20state.json%0A3.%20After%20each%20phase%2C%20tell%20user%20to%20start%20a%20NEW%20conversation%0A4.%20Be%20concise%20and%20action-oriented&input=Clone%20my%20writing%20style" class="cta-button">
+                    🚀 Launch in ChatWise
+                </a>
+                <p class="cta-subtitle">Opens ChatWise with the skill pre-loaded. Just click and go!</p>
             </div>
         </div>
         
@@ -487,7 +387,7 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
             <h2 class="section-title"><span class="icon">🔄</span> The Workflow</h2>
             
             <div class="warning-concept">
-                <strong>⚠️ Important:</strong> Always use your <strong>"Writing Style Clone"</strong> assistant for this workflow. Start a <strong>new conversation</strong> after each phase to keep things fast.
+                <strong>⚠️ Important:</strong> Start a <strong>new conversation</strong> after each phase. Use the launch button above each time.
             </div>
             
             <!-- First Time -->
@@ -496,7 +396,7 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
                     <h3>🎯 First Time Setup</h3>
                     <span class="workflow-badge badge-required">Required • ~30 minutes total</span>
                 </div>
-                <p style="margin-bottom: 20px; color: #555;">Complete all three phases in order. Each phase requires a new conversation.</p>
+                <p style="margin-bottom: 20px; color: #555;">Complete all three phases in order. Click the "Launch in ChatWise" button for each new phase.</p>
                 
                 <div class="phase phase-1">
                     <div class="phase-number">1</div>
@@ -504,10 +404,10 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
                         <h4>Setup</h4>
                         <p class="phase-meta">~5 minutes</p>
                         <div class="phase-trigger">"Clone my writing style"</div>
-                        <p class="phase-details">Installs the skill (if needed) and creates your workspace.</p>
+                        <p class="phase-details">Installs the skill and bulk-downloads your emails (50+ emails fetched automatically).</p>
                         <div class="new-chat-alert">
                             <span class="icon">🔄</span>
-                            <span><strong>When complete:</strong> Close this chat. Open a NEW conversation with your "Writing Style Clone" assistant.</span>
+                            <span><strong>When complete:</strong> Close this chat. Click "Launch in ChatWise" again for Phase 2.</span>
                         </div>
                     </div>
                 </div>
@@ -521,16 +421,16 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
                         <p class="phase-meta">~15-20 minutes</p>
                         <div class="phase-trigger">"Continue cloning my writing style"</div>
                         <div class="phase-details">
-                            Fetches your emails and LinkedIn posts, discovers your writing personas.
+                            Analyzes your downloaded emails and discovers your writing personas.
                             <ul>
                                 <li><strong>Goal:</strong> 50+ samples across 3+ personas</li>
-                                <li><strong>Commands:</strong> "Fetch my last 20 emails", "Show persona summary"</li>
+                                <li><strong>Commands:</strong> "Analyze next batch", "Show persona summary"</li>
                                 <li><strong>When done:</strong> Say "I'm ready to generate"</li>
                             </ul>
                         </div>
                         <div class="new-chat-alert">
                             <span class="icon">🔄</span>
-                            <span><strong>When complete:</strong> Close this chat. Open a NEW conversation with your "Writing Style Clone" assistant.</span>
+                            <span><strong>When complete:</strong> Close this chat. Click "Launch in ChatWise" again for Phase 3.</span>
                         </div>
                     </div>
                 </div>
@@ -563,19 +463,14 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
                 </div>
                 <p style="margin-bottom: 16px; color: #555;">Keep your writing assistant up to date as your style evolves.</p>
                 
-                <div class="assistant-reminder">
-                    <span class="icon">💡</span>
-                    <span><strong>Remember:</strong> Always use your "Writing Style Clone" assistant for these tasks.</span>
-                </div>
-                
                 <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
                     <tr style="border-bottom: 1px solid #eee;">
                         <td style="padding: 12px 0; font-weight: 500; color: #666; width: 120px;">Monthly</td>
-                        <td style="padding: 12px 0;">Run 1-2 more analysis batches to capture style evolution<br><code style="background: #f5f5f5; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem;">"Continue cloning my writing style"</code></td>
+                        <td style="padding: 12px 0;">Click "Launch in ChatWise" and say <code style="background: #f5f5f5; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem;">"Continue cloning my writing style"</code> to analyze new emails</td>
                     </tr>
                     <tr>
                         <td style="padding: 12px 0; font-weight: 500; color: #666;">Quarterly</td>
-                        <td style="padding: 12px 0;">Regenerate your writing assistant with new patterns<br><code style="background: #f5f5f5; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem;">"Generate my writing assistant"</code></td>
+                        <td style="padding: 12px 0;">Regenerate your writing assistant with <code style="background: #f5f5f5; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem;">"Generate my writing assistant"</code></td>
                     </tr>
                 </table>
             </div>
@@ -616,6 +511,7 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
 │   └── index.html <span class="comment"># This guide</span><br>
 │<br>
 └── my-writing-style/ <span class="comment"># Your personal data</span><br>
+    ├── raw_samples/ <span class="comment"># Downloaded emails (50+)</span><br>
     ├── state.json <span class="comment"># Tracks your progress</span><br>
     ├── persona_registry.json <span class="comment"># Discovered personas</span><br>
     ├── samples/ <span class="comment"># Analyzed writing</span><br>
@@ -630,8 +526,8 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
             <h2 class="section-title"><span class="icon">✅</span> Prerequisites</h2>
             <div class="card">
                 <ul style="margin-left: 20px;">
-                    <li><strong>ChatWise</strong> (or any AI chat app with terminal access)</li>
-                    <li><strong>Gmail MCP</strong> configured (for email analysis)</li>
+                    <li><strong>ChatWise</strong> app installed</li>
+                    <li><strong>Gmail MCP</strong> configured in ChatWise (for email access)</li>
                     <li><strong>LinkedIn MCP</strong> configured (optional, for post analysis)</li>
                 </ul>
             </div>
@@ -656,10 +552,7 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
             <div class="card">
                 <div class="troubleshoot-grid">
                     <div class="issue">"Skill not found"</div>
-                    <div class="solution">Say "Clone my writing style" and the AI will install it automatically</div>
-                    
-                    <div class="issue">"No project found"</div>
-                    <div class="solution">Start with "Clone my writing style" (Phase 1) using your Writing Style Clone assistant</div>
+                    <div class="solution">Click "Launch in ChatWise" and say "Clone my writing style" - it will install automatically</div>
                     
                     <div class="issue">Stuck in wrong phase</div>
                     <div class="solution">Say "Check my writing style status" to see current state</div>
@@ -679,20 +572,6 @@ Always read ~/Documents/writing-style/skill/SKILL.md for detailed phase instruct
         <p>Built by John Renaldi • January 2025</p>
         <p><a href="https://github.com/jrenaldi79/writing-style">github.com/jrenaldi79/writing-style</a></p>
     </div>
-    
-    <script>
-        function copyPrompt(btn, id) {
-            const code = document.getElementById(id);
-            navigator.clipboard.writeText(code.textContent).then(() => {
-                btn.textContent = 'Copied!';
-                btn.classList.add('copied');
-                setTimeout(() => {
-                    btn.textContent = 'Copy';
-                    btn.classList.remove('copied');
-                }, 2000);
-            });
-        }
-    </script>
     
 </body>
 </html>
