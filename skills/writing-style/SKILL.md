@@ -7,6 +7,14 @@ description: Analyze written content (Emails & LinkedIn) to generate a personali
 
 Analyze writing samples to discover personas and generate personalized writing assistant prompts.
 
+## ⚠️ Critical Workflows (Read First)
+
+**LinkedIn Profile Verification:** Common names return multiple profiles. ALWAYS verify profile identity BEFORE batch operations to avoid wrong-person errors and wasted tokens. See [LinkedIn Search Strategies](#-linkedin-search-strategies-critical) section.
+
+**Search Query Strategy:** Use disambiguating terms (full name, company, products) in ALL LinkedIn searches. Bad: `site:linkedin.com/posts/username 2024`. Good: `site:linkedin.com/posts/username "Full Name" Company OR Product`.
+
+**Script Location:** Use dynamic path finding (see setup commands) to handle nested GitHub repo structures. Scripts may be at different depths depending on how the repo was extracted.
+
 ## 📂 Repository Structure (CRITICAL FOR SETUP)
 
 The GitHub repo has this nested structure after extraction:
@@ -272,62 +280,90 @@ When you share others' content:
 
 ---
 
-#### Option A: Automated (Recommended - Coming Soon)
+### LinkedIn Fetching (Automated)
+
+**CRITICAL: Always provide full profile URL to avoid wrong-person errors!**
 
 ```bash
 cd ~/Documents/my-writing-style
 
-# Single command - handles everything automatically
+# Fetch posts (fully automated with built-in verification)
 python3 fetch_linkedin_mcp.py --profile "https://linkedin.com/in/username" --limit 20
 
-# Then filter and cluster
+# Filter quality posts (min 200 chars)
 python3 filter_linkedin.py
+
+# Generate unified persona (NO clustering - single voice)
 python3 cluster_linkedin.py
 ```
 
-**Note:** `fetch_linkedin_mcp.py` is a template - MCP integration pending.
+**How it works:**
+1. **Profile Verification:** Scrapes profile to verify identity (name, headline, company)
+2. **Smart Search:** Uses disambiguating terms to find correct person's posts
+3. **Batch Scraping:** Fetches all posts in one operation
+4. **Validation:** Filters out posts from wrong people
+5. **State Tracking:** Saves progress for resume/debugging
 
-#### Option B: Manual Workflow (Current)
+**Requirements:**
+- BrightData API token in `MCP_TOKEN` environment variable
+- Full LinkedIn URL (not just username)
 
-**CRITICAL: Always verify profile FIRST to avoid confusion!**
+**Why full URL matters:**
+- Common names return multiple profiles
+- URL ensures correct person from the start
+- Saves tokens by avoiding wrong-person errors
 
-Common names return many profiles. Follow this workflow:
+---
 
+## 🔍 LinkedIn Search Strategies (CRITICAL)
+
+### The Wrong-Person Problem
+
+Common names return many profiles from Google searches.
+
+**BAD searches (will return wrong people):**
+```
+site:linkedin.com/posts/username 2024
+site:linkedin.com/posts/username CompanyName
+```
+
+**GOOD searches (filtered by identity):**
+```
+site:linkedin.com/posts/username "Full Name" Company
+site:linkedin.com/posts/username Product OR TechStack OR Location
+```
+
+### After Profile Verification
+
+Once you've verified the profile, extract identity markers:
+- Full name: "First Last"
+- Companies: CurrentCo, PreviousCo, University
+- Location: City/Region
+- Products/Technologies: Key products or tech they mention
+
+Use these in ALL subsequent searches:
+```
+site:linkedin.com/posts/{username} "{full_name}" OR {company1} OR {company2}
+```
+
+### Search Strategy Workflow
+
+1. **Verify profile first** (get identity markers)
+2. **Build disambiguating query** using markers
+3. **Search with filters** to ensure correct person
+4. **Validate results** before batch processing
+
+**Example workflow:**
 ```bash
-cd ~/Documents/my-writing-style
-
-# STEP 1: Get FULL profile URL from user
-# Ask: "Please provide your complete LinkedIn URL"
-# Example: https://www.linkedin.com/in/renaldi
-
-# STEP 2: Verify identity (via System Prompt MCP calls)
-# - Scrape profile to extract name, headline
-# - Show user for confirmation: "Found: John Renaldi, Product Leader..."
-# - Confirm: "Is this correct?"
-
-# STEP 3: Only after confirmation, run batch fetch
-# This script coordinates the AI to make MCP calls
-python3 fetch_linkedin_complete.py --profile <username> --limit 20
-
-# STEP 4: Filter (quality gate: min 200 chars)
-python3 filter_linkedin.py
-
-# STEP 5: Generate single unified persona (NO clustering)
-python3 cluster_linkedin.py
+# After verifying profile and extracting markers:
+site:linkedin.com/posts/username "Full Name"
+site:linkedin.com/posts/username Company1 OR Company2 OR University
+site:linkedin.com/posts/username "Product Name" OR "Tech Stack"
 ```
 
-**Profile Verification Workflow (via System Prompt):**
+This prevents fetching posts from other people with the same username or similar names.
 
-1. **Get full URL:** Don't accept just a username - ask for complete profile URL
-2. **Scrape profile:** Use `scrape_as_markdown` to verify identity
-3. **Show preview:** Display name, headline, follower count to user
-4. **Confirm:** "Is this you?" before proceeding to batch operations
-5. **Proceed:** Only then run post search and scraping
-
-**Why This Matters:**
-- Common names like "Renaldi" return 10+ different profiles
-- Wrong profile = wasted tokens and incorrect persona
-- Verification takes 1 tool call, saves 10+ trial-and-error searches
+---
 
 **Output:**
 - `linkedin_persona.json` - Single unified professional voice
@@ -383,7 +419,7 @@ python3 validate.py
 │   │   │   ├── prepare_batch.py          # Format for analysis
 │   │   │   ├── ingest.py                 # Save analysis results
 │   │   │   ├── validate.py               # Quality validation
-│   │   │   ├── fetch_linkedin_complete.py # LinkedIn batch fetch
+│   │   │   ├── fetch_linkedin_mcp.py     # LinkedIn automated fetch
 │   │   │   ├── filter_linkedin.py        # LinkedIn filtering
 │   │   │   ├── cluster_linkedin.py       # LinkedIn unification
 │   │   │   ├── generate_system_prompt.py # Final generation
@@ -533,8 +569,7 @@ python3 validate.py
 
 | Script | Purpose | Input | Output |
 |--------|---------|-------|--------|
-| `fetch_linkedin_mcp.py` | Automated fetch (v2.0) | Full profile URL | /tmp/linkedin_scraped.json |
-| `fetch_linkedin_complete.py` | Manual instructions | Username | (guides AI) |
+| `fetch_linkedin_mcp.py` | Automated fetch with verification | Full profile URL | linkedin_data/*.json |
 | `filter_linkedin.py` | Quality gate | linkedin_data/ | filtered/ |
 | `cluster_linkedin.py` | Unify voice | filtered/ | linkedin_persona.json |
 

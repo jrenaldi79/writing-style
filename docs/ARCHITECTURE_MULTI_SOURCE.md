@@ -34,7 +34,7 @@ These are fundamentally different communication channels that require
 │                     DATA SOURCES                        │
 ├──────────────────────┬──────────────────────────────────┤
 │   Gmail API          │   Social Media Scraper          │
-│   ├─ fetch_emails.py │   ├─ fetch_linkedin_complete.py │
+│   ├─ fetch_emails.py │   ├─ fetch_linkedin_mcp.py │
 │   └─ raw_samples/    │   └─ raw_samples/               │
 │      email_*.json    │      linkedin_*.json            │
 └──────────────────────┴──────────────────────────────────┘
@@ -174,7 +174,7 @@ python validate.py
 ### LinkedIn Pipeline (Single-Persona)
 ```bash
 # 1. Fetch (efficient batch pattern)
-python fetch_linkedin_complete.py --profile renaldi --limit 50
+python fetch_linkedin_mcp.py --profile "https://linkedin.com/in/username" --limit 50
 # Agent executes: search → scrape_batch → process_batch (5 calls)
 
 # 2. Filter (engagement-based)
