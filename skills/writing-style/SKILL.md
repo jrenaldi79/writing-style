@@ -7,6 +7,62 @@ description: Analyze written content (Emails & LinkedIn) to generate a personali
 
 Analyze writing samples to discover personas and generate personalized writing assistant prompts.
 
+## 📂 Repository Structure (CRITICAL FOR SETUP)
+
+The GitHub repo has this nested structure after extraction:
+```
+writing-style/
+├── writing-style-main/          # Extracted from zip
+│   ├── skills/
+│   │   └── writing-style/
+│   │       ├── scripts/         # ← Python scripts are HERE
+│   │       │   ├── fetch_emails.py
+│   │       │   ├── filter_emails.py
+│   │       │   └── ... (all .py files)
+│   │       └── references/
+│   │           └── calibration.md
+│   └── docs/
+└── (other files at root level)
+```
+
+**CRITICAL PATHS:**
+- Scripts location: `~/Documents/writing-style/writing-style-main/skills/writing-style/scripts/*.py`
+- Calibration guide: `~/Documents/writing-style/writing-style-main/skills/writing-style/references/calibration.md`
+
+**Alternative paths** (if repo cloned directly or manually reorganized):
+- May also be at: `~/Documents/writing-style/skills/writing-style/scripts/*.py`
+
+**Recommendation:** Use dynamic path finding (see setup commands below) to handle any structure.
+
+---
+
+## ✅ Pre-flight Checklist (For AI Assistant)
+
+Before starting any pipeline, verify these critical paths:
+
+**Step 1: Verify repo structure discovered**
+```bash
+find ~/Documents/writing-style -name "fetch_emails.py" 2>/dev/null
+```
+Expected output: Path containing `/skills/writing-style/scripts/`
+
+**Step 2: Verify scripts accessible**
+```bash
+SCRIPTS_PATH=$(find ~/Documents/writing-style -type d -name "scripts" -path "*/skills/writing-style/*" 2>/dev/null | head -1)
+ls -1 "$SCRIPTS_PATH"/*.py 2>/dev/null | wc -l
+```
+Expected output: Number > 15 (should find all Python scripts)
+
+**Step 3: Verify work directory state**
+```bash
+ls ~/Documents/my-writing-style/state.json 2>/dev/null || echo "NEW_PROJECT"
+```
+Expected output: Shows state.json content OR "NEW_PROJECT"
+
+**If any check fails:** Run recovery commands in troubleshooting section before proceeding.
+
+---
+
 ## 🆕 v3.0 Multi-Session Architecture
 
 **CRITICAL:** This workflow uses strategic session boundaries to maintain clean context and deliver higher quality outputs.
@@ -53,8 +109,16 @@ Session 4: Generation → Final output → DONE!
 # 1. Create directories
 mkdir -p ~/Documents/my-writing-style/{samples,prompts,raw_samples,batches,filtered_samples,enriched_samples,validation_set}
 
-# 2. Copy scripts
-cp ~/Documents/writing-style/skill/scripts/*.py ~/Documents/my-writing-style/
+# 2. Find and copy scripts dynamically
+SCRIPTS_PATH=$(find ~/Documents/writing-style -type d -name "scripts" -path "*/skills/writing-style/*" 2>/dev/null | head -1)
+if [ -z "$SCRIPTS_PATH" ]; then
+  echo "ERROR: Cannot find scripts directory. Re-downloading repo..."
+  cd ~/Documents/writing-style && rm -rf writing-style-main && \
+  curl -sL https://github.com/jrenaldi79/writing-style/archive/refs/heads/main.zip -o repo.zip && \
+  unzip -q repo.zip
+  SCRIPTS_PATH=$(find ~/Documents/writing-style -type d -name "scripts" -path "*/skills/writing-style/*" | head -1)
+fi
+cp "$SCRIPTS_PATH"/*.py ~/Documents/my-writing-style/
 cd ~/Documents/my-writing-style
 
 # 3. Initialize state management
@@ -88,7 +152,9 @@ python3 cluster_emails.py
 cat state.json
 
 # 2. Read calibration anchors (CRITICAL for consistent scoring)
-cat ~/Documents/writing-style/skill/references/calibration.md
+# Find calibration.md dynamically
+CALIB_PATH=$(find ~/Documents/writing-style -name "calibration.md" -path "*/references/*" 2>/dev/null | head -1)
+cat "$CALIB_PATH"
 
 # 3. Prepare first cluster for analysis
 python3 prepare_batch.py
@@ -521,6 +587,21 @@ python3 validate.py
 ## 🔧 Troubleshooting
 
 ### Common Issues
+
+**"No such file or directory" for scripts**
+- Cause: Scripts location varies based on how repo was downloaded/extracted
+- Fix: Use dynamic path finding
+```bash
+# Find where scripts actually are
+find ~/Documents/writing-style -name "fetch_emails.py" -exec dirname {} \;
+
+# Then copy from discovered location
+cp /path/from/above/*.py ~/Documents/my-writing-style/
+```
+- Common locations:
+  - `~/Documents/writing-style/writing-style-main/skills/writing-style/scripts/`
+  - `~/Documents/writing-style/skills/writing-style/scripts/`
+- Prevention: Use the dynamic setup command in Session 1 which auto-locates scripts
 
 **"State not found"**
 - Run: `python3 -c 'from state_manager import init_state; init_state(".")'`

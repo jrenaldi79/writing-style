@@ -27,17 +27,43 @@ You are the Writing Style Coordinator. Your job is to orchestrate the "Dual Pipe
 
 ALWAYS run this first to check environment and load state:
 ```bash
-[ -d ~/Documents/writing-style/skill ] || (mkdir -p ~/Documents/writing-style && cd ~/Documents/writing-style && curl -sL https://github.com/jrenaldi79/writing-style/archive/refs/heads/main.zip -o repo.zip && unzip -q repo.zip && mv writing-style-main/* . && rm -rf writing-style-main repo.zip); uname -s || echo "WINDOWS"; [ -d ~/Documents/my-writing-style/venv ] || echo "VENV_MISSING"; [ -f ~/Documents/my-writing-style/state.json ] && cat ~/Documents/my-writing-style/state.json || echo "STATUS: NEW_PROJECT"
+# Smart Bootstrap v2 - Auto-locates scripts
+REPO_DIR=~/Documents/writing-style
+WORK_DIR=~/Documents/my-writing-style
+
+# 1. Ensure repo exists
+[ -d "$REPO_DIR" ] || (mkdir -p "$REPO_DIR" && cd "$REPO_DIR" && curl -sL https://github.com/jrenaldi79/writing-style/archive/refs/heads/main.zip -o repo.zip && unzip -q repo.zip)
+
+# 2. Find scripts dynamically
+SCRIPTS_PATH=$(find "$REPO_DIR" -type d -name "scripts" -path "*/skills/writing-style/*" 2>/dev/null | head -1)
+
+# 3. Report findings
+echo "PLATFORM: $(uname -s || echo WINDOWS)"
+echo "SCRIPTS_LOCATION: ${SCRIPTS_PATH:-NOT_FOUND}"
+[ -d "$WORK_DIR/venv" ] || echo "VENV: MISSING"
+[ -f "$WORK_DIR/state.json" ] && cat "$WORK_DIR/state.json" || echo "STATUS: NEW_PROJECT"
 ```
 
 **Interpret Results:**
 - `STATUS: NEW_PROJECT` → First time, start Session 1
-- `VENV_MISSING` → Need to create virtual environment (part of Session 1 setup)
-- `WINDOWS` in output → Windows user (note for potential fallback syntax)
-- `Darwin` or `Linux` → Mac/Linux user
+- `VENV: MISSING` → Need to create virtual environment (part of Session 1 setup)
+- `SCRIPTS_LOCATION: /path/to/scripts` → Scripts found at this path
+- `SCRIPTS_LOCATION: NOT_FOUND` → Need to re-download repo
+- `PLATFORM: WINDOWS` → Windows user (note for potential fallback syntax)
+- `PLATFORM: Darwin` → Mac user (primary supported platform)
+- `PLATFORM: Linux` → Linux user
 - `current_phase: "preprocessing"` → Resume or start Session 2
 - `current_phase: "analysis"` → Continue Session 2 or start Session 4
 - `current_phase: "generation"` → Start Session 4
+
+**Example Output:**
+```
+PLATFORM: Darwin
+SCRIPTS_LOCATION: /Users/john/Documents/writing-style/writing-style-main/skills/writing-style/scripts
+VENV: MISSING
+STATUS: NEW_PROJECT
+```
+→ Mac user, scripts found, needs venv setup, first time = Start Session 1
 
 ---
 
@@ -87,8 +113,17 @@ Then use: `venv\Scripts\python.exe` and `%USERPROFILE%\Documents\`
 
 2. **Setup:** If "STATUS: NEW_PROJECT" or "VENV_MISSING", run:
    ```bash
+   # Dynamic Setup - Uses discovered script path from bootstrap
+   SCRIPTS_PATH=$(find ~/Documents/writing-style -type d -name "scripts" -path "*/skills/writing-style/*" 2>/dev/null | head -1)
+   
+   if [ -z "$SCRIPTS_PATH" ]; then
+     echo "ERROR: Cannot find scripts. Re-downloading repo..."
+     cd ~/Documents/writing-style && rm -rf writing-style-main && curl -sL https://github.com/jrenaldi79/writing-style/archive/refs/heads/main.zip -o repo.zip && unzip -q repo.zip
+     SCRIPTS_PATH=$(find ~/Documents/writing-style -type d -name "scripts" -path "*/skills/writing-style/*" | head -1)
+   fi
+   
    mkdir -p ~/Documents/my-writing-style/{samples,prompts,raw_samples,batches,filtered_samples,enriched_samples,validation_set} && \
-   cp ~/Documents/writing-style/skills/writing-style/scripts/*.py ~/Documents/my-writing-style/ && \
+   cp "$SCRIPTS_PATH"/*.py ~/Documents/my-writing-style/ && \
    cd ~/Documents/my-writing-style && \
    python3 -m venv venv && \
    venv/bin/python3 -m pip install sentence-transformers numpy scikit-learn && \
@@ -97,8 +132,11 @@ Then use: `venv\Scripts\python.exe` and `%USERPROFILE%\Documents\`
 
    **Windows Fallback** (if user reports errors):
    ```bash
-   mkdir ~/Documents/my-writing-style/samples ~/Documents/my-writing-style/prompts ~/Documents/my-writing-style/raw_samples ~/Documents/my-writing-style/batches ~/Documents/my-writing-style/filtered_samples ~/Documents/my-writing-style/enriched_samples ~/Documents/my-writing-style/validation_set && \
-   copy "%USERPROFILE%\Documents\writing-style\skill\scripts\*.py" "%USERPROFILE%\Documents\my-writing-style\" && \
+   REM Dynamic Setup for Windows
+   for /f "delims=" %%i in ('dir /s /b "%USERPROFILE%\Documents\writing-style\scripts" ^| findstr "skills\\writing-style\\scripts$"') do set SCRIPTS_PATH=%%i
+   
+   mkdir "%USERPROFILE%\Documents\my-writing-style\samples" "%USERPROFILE%\Documents\my-writing-style\prompts" "%USERPROFILE%\Documents\my-writing-style\raw_samples" "%USERPROFILE%\Documents\my-writing-style\batches" "%USERPROFILE%\Documents\my-writing-style\filtered_samples" "%USERPROFILE%\Documents\my-writing-style\enriched_samples" "%USERPROFILE%\Documents\my-writing-style\validation_set" && \
+   copy "%SCRIPTS_PATH%\*.py" "%USERPROFILE%\Documents\my-writing-style\" && \
    cd "%USERPROFILE%\Documents\my-writing-style" && \
    python -m venv venv && \
    venv\Scripts\python.exe -m pip install sentence-transformers numpy scikit-learn && \
@@ -191,7 +229,7 @@ Then use: `venv\Scripts\python.exe` and `%USERPROFILE%\Documents\`
    ```
 
 2. **Analysis (Interactive):**
-   - Read `~/Documents/writing-style/skills/writing-style/references/calibration.md` first
+   - Read calibration.md first (find dynamically: `find ~/Documents/writing-style -name "calibration.md" -path "*/references/*" | head -1`)
    - Run `cd ~/Documents/my-writing-style && venv/bin/python3 prepare_batch.py` to get next cluster
    - Analyze emails using **1-10 Tone Vectors** (Formality, Warmth, Authority, Directness)
    - Reference calibration anchors for consistent scoring
@@ -621,6 +659,28 @@ Continuing in fresh context for optimal quality...
 
 ## 🔧 Troubleshooting
 
+### Script Location Issues
+
+**If "No such file or directory" for scripts:**
+```bash
+# Find where scripts actually are
+find ~/Documents/writing-style -name "fetch_emails.py" -exec dirname {} \;
+
+# Then copy from discovered location
+cp /path/from/above/*.py ~/Documents/my-writing-style/
+```
+
+**Common causes:**
+- GitHub zip extraction creates unexpected nested folders
+- Previous failed downloads left partial structures
+- Manual file movements by user
+
+**Fix:** Use the `find` command above to locate scripts, then adjust copy command.
+
+**Prevention:** The updated bootstrap (v2) automatically finds scripts regardless of structure.
+
+---
+
 ### Virtual Environment Issues
 
 **If venv is corrupted or missing:**
@@ -686,7 +746,17 @@ Otherwise, **stick with cross-platform commands** - they're simpler and work 95%
 
 ## 📝 Version History
 
-### v3.1 (Current) - Virtual Environment Fix
+### v3.2 (Current) - Dynamic Path Discovery
+- **Fixed:** Script location issues caused by nested GitHub repo structure
+- **Added:** Dynamic path finding using `find` command in bootstrap
+- **Added:** Auto-recovery if scripts not found (re-downloads repo)
+- **Added:** Repository structure documentation in SKILL.md
+- **Added:** Script location troubleshooting section
+- **Changed:** Bootstrap now reports `SCRIPTS_LOCATION` for diagnostics
+- **Improved:** Setup commands now work regardless of extraction quirks
+- **Added:** Pre-flight checklist in SKILL.md for verification
+
+### v3.1 - Virtual Environment Fix
 - **Added:** Virtual environment support for all platforms
 - **Fixed:** macOS PEP 668 externally-managed-environment error
 - **Added:** Windows compatibility with fallback syntax
