@@ -55,7 +55,23 @@ def ingest_batch(batch_file, dry_run=False):
     new_personas = batch.get("new_personas", [])
     
     if not samples:
-        print("❌ No samples found in batch file")
+        print("❌ No 'samples' array found in batch file")
+        print("\n📋 Expected format:")
+        print('  "samples": [')
+        print('    {"id": "email_xxx", "source": "email", "persona": "Name", "confidence": 0.85, "analysis": {...}, "context": {...}}')
+        print('  ]')
+        
+        # Check for common mistakes
+        if "sample_ids" in batch:
+            print("\n⚠️  Found 'sample_ids' - did you mean 'samples'?")
+            print("    Each sample needs full analysis object, not just IDs.")
+        if "persona" in batch and "new_personas" not in batch:
+            print("\n⚠️  Found 'persona' (singular) - did you mean 'new_personas' (array)?")
+        if batch.get("samples") == []:
+            print("\n⚠️  'samples' array exists but is empty.")
+        
+        print("\n📖 Run: python prepare_batch.py")
+        print("    The output includes the required JSON schema.")
         return False
     
     print(f"📦 Processing batch: {len(samples)} samples, {len(new_personas)} new personas")

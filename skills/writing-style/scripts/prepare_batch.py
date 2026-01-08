@@ -239,11 +239,70 @@ def prepare_cluster_batch(cluster_id: int) -> str:
     output.append("""1. **Read calibration reference** above for scoring consistency
 2. **Analyze each email** for tone, formality, structure, patterns
 3. **Determine persona** - create new if needed, or assign to existing
-4. **Output JSON** following batch_schema.md format
+4. **Output JSON** using the schema below
 5. **Save as** batches/batch_NNN.json
 6. **Run ingest:** python ingest.py batches/batch_NNN.json
 
-**Remember:** Include `calibration_referenced: true` in your output.""")
+**Remember:** Include `calibration_referenced: true` in your output.
+
+## Required JSON Schema
+
+```json
+{
+  "batch_id": "batch_001",
+  "analyzed_at": "2026-01-07T12:00:00Z",
+  "email_count": 35,
+  "cluster_id": 1,
+  "calibration_referenced": true,
+  "calibration_notes": "Anchored formality against examples 3/5, authority against 7/9",
+  "new_personas": [
+    {
+      "name": "Persona Name",
+      "description": "When this persona is used",
+      "characteristics": {
+        "tone": ["word1", "word2"],
+        "formality": 5,
+        "warmth": 6,
+        "authority": 7,
+        "directness": 8,
+        "typical_greeting": "Hey / Hi there",
+        "typical_closing": "JR",
+        "uses_contractions": true
+      }
+    }
+  ],
+  "samples": [
+    {
+      "id": "email_abc123def456",
+      "source": "email",
+      "persona": "Persona Name",
+      "confidence": 0.85,
+      "analysis": {
+        "tone_vectors": {"formality": 5, "warmth": 6, "authority": 7, "directness": 8},
+        "tone_descriptors": ["warm", "direct"],
+        "sentence_style": "short, punchy",
+        "paragraph_style": "single topic",
+        "greeting": "Hey / none",
+        "closing": "JR / none",
+        "punctuation": ["em-dashes", "exclamations"],
+        "contractions": true,
+        "notable_phrases": ["phrase1", "phrase2"],
+        "structure": "greeting → content → close"
+      },
+      "context": {
+        "recipient_type": "small_group",
+        "audience": "unknown",
+        "thread_position": "initiating"
+      }
+    }
+  ]
+}
+```
+
+**IMPORTANT:**
+- `samples` must be an array with one object per email (not just IDs)
+- Each sample needs `id`, `persona`, `confidence`, `analysis`, and `context`
+- `new_personas` is only needed when discovering NEW personas""")
     
     return "\n".join(output)
 
