@@ -88,7 +88,7 @@ Then use: `venv\Scripts\python.exe` and `%USERPROFILE%\Documents\`
 2. **Setup:** If "STATUS: NEW_PROJECT" or "VENV_MISSING", run:
    ```bash
    mkdir -p ~/Documents/my-writing-style/{samples,prompts,raw_samples,batches,filtered_samples,enriched_samples,validation_set} && \
-   cp ~/Documents/writing-style/skill/scripts/*.py ~/Documents/my-writing-style/ && \
+   cp ~/Documents/writing-style/skills/writing-style/scripts/*.py ~/Documents/my-writing-style/ && \
    cd ~/Documents/my-writing-style && \
    python3 -m venv venv && \
    venv/bin/python3 -m pip install sentence-transformers numpy scikit-learn && \
@@ -191,7 +191,7 @@ Then use: `venv\Scripts\python.exe` and `%USERPROFILE%\Documents\`
    ```
 
 2. **Analysis (Interactive):**
-   - Read `~/Documents/writing-style/skill/references/calibration.md` first
+   - Read `~/Documents/writing-style/skills/writing-style/references/calibration.md` first
    - Run `cd ~/Documents/my-writing-style && venv/bin/python3 prepare_batch.py` to get next cluster
    - Analyze emails using **1-10 Tone Vectors** (Formality, Warmth, Authority, Directness)
    - Reference calibration anchors for consistent scoring
@@ -248,13 +248,26 @@ Then use: `venv\Scripts\python.exe` and `%USERPROFILE%\Documents\`
    This adds consistent thought-leader voice to your assistant.
    ```
 
-2. **Fetch:** Ask for LinkedIn username/URL if not provided.
+2. **Verify Profile FIRST (CRITICAL):**
+   
+   **Ask for FULL LinkedIn URL:**
+   "Please provide your complete LinkedIn profile URL (e.g., https://www.linkedin.com/in/yourname)"
+   
+   **Then verify identity:**
+   - Use `scrape_as_markdown` on their profile URL
+   - Extract and show: Name, Headline, Follower count
+   - Ask: "I found: [Name], [Headline]. Is this correct?"
+   - Only proceed after user confirms
+   
+   **Why:** Common names return many profiles. Verification prevents wasted tokens.
+
+3. **Fetch:** Only after verification, run batch fetch.
    ```bash
    cd ~/Documents/my-writing-style && \
    venv/bin/python3 fetch_linkedin_complete.py --profile <USERNAME> --limit 20
    ```
 
-3. **Filter & Unify:**
+4. **Filter & Unify:**
    ```bash
    cd ~/Documents/my-writing-style && \
    venv/bin/python3 filter_linkedin.py && \
@@ -263,7 +276,7 @@ Then use: `venv\Scripts\python.exe` and `%USERPROFILE%\Documents\`
    
    Output: `linkedin_persona.json` (No manual analysis needed)
 
-4. **After Completion:**
+5. **After Completion:**
    ```
    ✅ LINKEDIN PIPELINE COMPLETE
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -287,6 +300,135 @@ Then use: `venv\Scripts\python.exe` and `%USERPROFILE%\Documents\`
    ```
 
 **DO NOT proceed to generation. Stop and instruct new chat.**
+
+---
+
+### 📊 Using Rich LinkedIn Data (v3.3 Enhancement)
+
+When analyzing LinkedIn posts, leverage the **20+ data fields** now captured:
+
+#### 1. Prioritize High-Engagement Posts
+**Strategy:** Filter by engagement to find strongest voice examples
+
+```python
+# Posts with likes > 50 OR comments > 5 = proven resonance
+high_engagement = [p for p in posts if p['likes'] > 50 or p['comments'] > 5]
+```
+
+**Why:** High engagement = content that resonates with audience = authentic voice
+
+#### 2. Analyze Top Comments for Insights
+**What to look for:**
+- **Authority signals**: "best founder", "thought leader", "one of a kind"
+- **Recurring themes**: What aspects do people praise?
+- **Questions asked**: Content gaps to address
+- **Sentiment**: Positive/negative/neutral
+
+**Example:**
+```
+Comment: "One of the absolute best founders, mentors, workshop leaders..."
+→ Insight: Recognized for mentorship AND execution
+→ Persona trait: "Mentor-Practitioner" voice
+```
+
+#### 3. Distinguish Content Types
+**Original vs Repost analysis:**
+
+```python
+original_posts = [p for p in posts if p['post_type'] == 'original']
+reposts = [p for p in posts if p['is_repost']]
+
+ratio = len(original_posts) / len(posts)
+# If ratio > 0.7: Creator voice dominant
+# If ratio < 0.3: Curator voice dominant
+```
+
+**For Reposts:** Analyze `original_commentary` separate from `repost_data.repost_text`
+- His words = Editorial voice
+- Original author = What he amplifies
+
+#### 4. Network Pattern Recognition
+**Who does he mention?**
+
+```python
+tagged_people = [person['name'] for post in posts 
+                 for person in post.get('tagged_people', [])]
+tagged_companies = [company['name'] for post in posts 
+                    for company in post.get('tagged_companies', [])]
+
+# Frequency analysis
+from collections import Counter
+Counter(tagged_people).most_common(5)
+# Example output: [('Logan LaHive', 8), ('Startup X', 5), ...]
+```
+
+**Insight:** "Frequently collaborates with founders and startups"
+
+#### 5. Content Structure Patterns
+**Link and visual usage:**
+
+```python
+posts_with_links = [p for p in posts if p['embedded_links']]
+posts_with_images = [p for p in posts if p['images']]
+posts_with_external = [p for p in posts if p['external_links']]
+
+link_ratio = len(posts_with_links) / len(posts)
+# High ratio = shares resources frequently
+```
+
+**Insight:** Include in persona description
+
+#### 6. Authority Context
+**Use metrics for persona background:**
+
+```python
+followers = posts[0].get('author_followers', 0)  # Same for all posts
+total_posts = posts[0].get('author_total_posts', 0)
+articles = posts[0].get('author_articles', 0)
+
+# Add to persona metadata
+"Platform: LinkedIn (4,715 followers, 265 posts, 4 articles)"
+```
+
+---
+
+### Example Analysis Using Rich Data
+
+**Input:** 20 LinkedIn posts with full engagement data
+
+**Analysis:**
+```python
+# Engagement pattern
+top_performers = sorted(posts, key=lambda p: p['likes'], reverse=True)[:5]
+avg_likes = sum(p['likes'] for p in posts) / len(posts)
+
+# Content balance
+original_count = sum(1 for p in posts if not p['is_repost'])
+repost_count = len(posts) - original_count
+
+# Network analysis
+most_tagged = Counter(person['name'] for post in posts 
+                      for person in post['tagged_people']).most_common(3)
+
+# Comment sentiment
+authority_mentions = sum(1 for post in posts 
+                         for comment in post['top_comments']
+                         if any(word in comment['comment'].lower() 
+                                for word in ['best', 'leader', 'expert']))
+```
+
+**Output Persona Insights:**
+```
+📊 LinkedIn Professional Voice:
+- Engagement: 65 avg likes, top post: 333 likes
+- Content Mix: 30% original, 70% thoughtful reposts
+- Network: Frequently tags startup founders (Logan LaHive: 8x)
+- Authority: 12 comments contain praise ("best mentor", "thought leader")
+- Platform: Active (265 posts), Growing (4.7K followers)
+- Style: Commentary on others' work, adds personal stories
+```
+
+**This becomes part of the unified LinkedIn persona.**
 
 ---
 

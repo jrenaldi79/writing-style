@@ -1,9 +1,9 @@
 ---
-name: writing-style-clone
-description: Analyze written content (Emails & LinkedIn) to generate a personalized system prompt that replicates the user's authentic voice using multi-session context management.
+name: writing-style
+description: Analyze written content (Emails & LinkedIn) to generate a personalized system prompt that replicates the user's authentic voice. Use when cloning writing style, analyzing emails, or building personas.
 ---
 
-# Writing Style Clone v3.0
+# Writing Style Clone v3.3
 
 Analyze writing samples to discover personas and generate personalized writing assistant prompts.
 
@@ -125,20 +125,143 @@ python3 ingest.py batches/batch_002.json
 
 **Purpose:** Build unified professional voice from LinkedIn posts.
 
+---
+
+### 📊 Data Captured from LinkedIn Posts (v3.3 Enhancement)
+
+The LinkedIn pipeline captures **20+ fields per post** for rich persona development:
+
+#### Core Content
+- **Text**: Full post content (your actual words)
+- **Headline**: Opening hook/summary
+- **Post Type**: Original vs Repost/Share
+- **Date**: When published
+- **HTML Version**: Formatted text with links
+
+#### 🆕 Engagement Signals (v3.3)
+**Why this matters:** High-engagement posts = strongest voice examples
+
+- **Likes/Comments Count**: Quantitative engagement (47 likes, 3 comments)
+- **Top Comments**: Actual audience responses
+  - **Reveals:** What resonates with your audience
+  - **Shows:** How others perceive you (authority signals)
+  - **Identifies:** Content gaps (questions people ask)
+  - **Example:** "One of the absolute best founders, mentors..." ← Authority signal
+
+**Use Case:** Filter to posts with 50+ likes or 5+ comments for strongest voice
+
+#### 🆕 Network Context (v3.3)
+**Why this matters:** Shows collaboration patterns and relationship style
+
+- **Tagged People**: Who you mention/collaborate with
+- **Tagged Companies**: Organizations you reference
+- **Your Metrics**: Follower count (4,715), total posts (265), articles (4)
+
+**Use Case:** Generate "frequently mentions X" or "collaborates with Y" patterns
+
+#### 🆕 Repost Analysis (v3.3)
+**Why this matters:** Separates your editorial voice from creation voice
+
+When you share others' content:
+- **Your Commentary**: What you add/emphasize (your framing)
+- **Original Content**: What you're amplifying (their words)
+- **Attribution**: Who you credit
+- **Network**: Tagged users/companies in original post
+
+**Use Case:** Understand your "curation voice" distinct from "creation voice"
+
+#### Content Structure
+- **Embedded Links**: External references you include
+- **Images**: Visual content used
+- **External Link Data**: Previews of shared URLs
+
+**Use Case:** Capture "includes links to..." or "shares visuals" patterns
+
+#### Authority Signals
+- **Follower Count**: Your platform reach
+- **Total Posts**: Publishing frequency
+- **Articles**: Long-form vs short-form ratio
+
+**Use Case:** Context for persona ("active thought leader with 4.7K followers")
+
+---
+
+### How This Improves Persona Quality
+
+**Before v3.3 (5 fields):**
+- Could only analyze text content
+- No idea what resonated (engagement unknown)
+- Couldn't distinguish original vs curated
+- Missing authority context
+
+**After v3.3 (20+ fields):**
+- ✅ **Voice Validation**: High-engagement = strong voice
+- ✅ **Content Balance**: Know original vs curated ratio
+- ✅ **Editorial Voice**: How you frame others' work
+- ✅ **Network Patterns**: Collaboration style
+- ✅ **Authority Context**: Platform engagement level
+
+**Example Insight:**
+> "70% reposts with thoughtful commentary. Frequently tags startup founders. Top posts average 80+ likes. Authority signals in comments: 'best mentor', 'thought leader'."
+
+---
+
+#### Option A: Automated (Recommended - Coming Soon)
+
 ```bash
 cd ~/Documents/my-writing-style
 
-# 1. Fetch posts (token-efficient batch pattern)
-# Automatically runs: Search → Scrape Batch → Process Batch
-python3 fetch_linkedin_complete.py --profile <username> --limit 20
+# Single command - handles everything automatically
+python3 fetch_linkedin_mcp.py --profile "https://linkedin.com/in/username" --limit 20
 
-# 2. Filter (quality gate: min 200 chars)
+# Then filter and cluster
 python3 filter_linkedin.py
-
-# 3. Generate single unified persona (NO clustering)
-# Calculates centroid of all posts for consistency
 python3 cluster_linkedin.py
 ```
+
+**Note:** `fetch_linkedin_mcp.py` is a template - MCP integration pending.
+
+#### Option B: Manual Workflow (Current)
+
+**CRITICAL: Always verify profile FIRST to avoid confusion!**
+
+Common names return many profiles. Follow this workflow:
+
+```bash
+cd ~/Documents/my-writing-style
+
+# STEP 1: Get FULL profile URL from user
+# Ask: "Please provide your complete LinkedIn URL"
+# Example: https://www.linkedin.com/in/renaldi
+
+# STEP 2: Verify identity (via System Prompt MCP calls)
+# - Scrape profile to extract name, headline
+# - Show user for confirmation: "Found: John Renaldi, Product Leader..."
+# - Confirm: "Is this correct?"
+
+# STEP 3: Only after confirmation, run batch fetch
+# This script coordinates the AI to make MCP calls
+python3 fetch_linkedin_complete.py --profile <username> --limit 20
+
+# STEP 4: Filter (quality gate: min 200 chars)
+python3 filter_linkedin.py
+
+# STEP 5: Generate single unified persona (NO clustering)
+python3 cluster_linkedin.py
+```
+
+**Profile Verification Workflow (via System Prompt):**
+
+1. **Get full URL:** Don't accept just a username - ask for complete profile URL
+2. **Scrape profile:** Use `scrape_as_markdown` to verify identity
+3. **Show preview:** Display name, headline, follower count to user
+4. **Confirm:** "Is this you?" before proceeding to batch operations
+5. **Proceed:** Only then run post search and scraping
+
+**Why This Matters:**
+- Common names like "Renaldi" return 10+ different profiles
+- Wrong profile = wasted tokens and incorrect persona
+- Verification takes 1 tool call, saves 10+ trial-and-error searches
 
 **Output:**
 - `linkedin_persona.json` - Single unified professional voice
@@ -344,7 +467,8 @@ python3 validate.py
 
 | Script | Purpose | Input | Output |
 |--------|---------|-------|--------|
-| `fetch_linkedin_complete.py` | Batch scrape | Username | linkedin_data/*.json |
+| `fetch_linkedin_mcp.py` | Automated fetch (v2.0) | Full profile URL | /tmp/linkedin_scraped.json |
+| `fetch_linkedin_complete.py` | Manual instructions | Username | (guides AI) |
 | `filter_linkedin.py` | Quality gate | linkedin_data/ | filtered/ |
 | `cluster_linkedin.py` | Unify voice | filtered/ | linkedin_persona.json |
 
