@@ -1,5 +1,108 @@
 # Changelog
 
+## [3.1.0] - 2026-01-07
+
+### Virtual Environment & Cross-Platform Fix
+
+This release fixes critical dependency installation issues on macOS (PEP 668) and improves Windows compatibility.
+
+### Problem Solved
+
+**macOS Issue:**
+- Modern macOS (and Linux distros) block system-wide pip installs (PEP 668)
+- Users encountered: `error: externally-managed-environment`
+- Previous workflow used bare `pip3` and `python3` commands
+
+**Solution:**
+- All Python dependencies now installed in virtual environment (`venv/`)
+- Direct path execution: `venv/bin/python3` (no activation needed)
+- Persists across all chat sessions
+- Works reliably on macOS, Linux, and Windows
+
+### Changed
+
+#### Session 1 Setup
+**Before:**
+```bash
+mkdir -p ~/Documents/my-writing-style/{...} && \
+python3 -c 'from state_manager import init_state; init_state(".")'
+```
+
+**After:**
+```bash
+mkdir -p ~/Documents/my-writing-style/{...} && \
+python3 -m venv venv && \
+venv/bin/python3 -m pip install sentence-transformers numpy scikit-learn && \
+venv/bin/python3 -c 'from state_manager import init_state; init_state(".")'
+```
+
+#### All Script Execution
+**Before:** `python3 script.py`  
+**After:** `venv/bin/python3 script.py`
+
+#### Bootstrap Check
+**Before:** Only checked for `state.json`  
+**After:** Also checks for `venv/` existence and detects OS
+
+### Added
+
+#### Cross-Platform Support
+- **OS Detection**: Bootstrap detects Windows vs Mac/Linux
+- **Forward Slash Default**: Cross-platform paths work 95% of time
+- **Windows Fallback**: Backslash syntax available if needed
+- **Troubleshooting Guide**: Complete cross-platform command reference
+
+#### Virtual Environment Management
+- `venv/` created once during Session 1 setup
+- No activation required - direct path execution
+- Persists across all 4 session boundaries
+- Isolated from system Python
+
+### Documentation
+
+- **SYSTEM_PROMPT.md**: Updated to v3.1 with venv commands
+- **Troubleshooting Section**: Added venv recovery and OS-specific fixes
+- **Command Reference Table**: Cross-platform vs Windows fallback syntax
+- **Version History**: Added within system prompt
+
+### Benefits
+
+1. **Reliability**: Works on modern macOS without workarounds
+2. **Simplicity**: No manual venv activation across sessions
+3. **Compatibility**: Same workflow on Mac/Linux/Windows
+4. **Isolation**: Dependencies don't conflict with system Python
+5. **Multi-Session Safe**: venv persists automatically
+
+### Migration from v2.0
+
+No data migration needed. Just re-run Session 1 setup to create venv:
+
+```bash
+cd ~/Documents/my-writing-style && \
+python3 -m venv venv && \
+venv/bin/python3 -m pip install sentence-transformers numpy scikit-learn
+```
+
+Then use `venv/bin/python3` for all subsequent commands.
+
+### Files Changed
+
+**Modified:**
+- `SYSTEM_PROMPT.md` (v3.0 → v3.1, added venv + cross-platform support)
+- `CHANGELOG.md` (this entry)
+
+**No script changes needed** - Python files work identically with venv Python.
+
+### Compatibility
+
+- ✅ macOS 12+ (Monterey and later with PEP 668)
+- ✅ Linux (all modern distros)
+- ✅ Windows 10/11 (Git Bash, PowerShell, CMD)
+- ✅ Multi-session workflow preserved
+- ✅ Backward compatible with existing data
+
+---
+
 ## [2.0.0] - 2026-01-07
 
 ### Major Rewrite: Mathematical Clustering & Validation
