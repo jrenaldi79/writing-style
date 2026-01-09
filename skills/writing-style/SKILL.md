@@ -318,6 +318,49 @@ venv/bin/python3 cluster_emails.py --algorithm kmeans -k 5
 3. Create the batch JSON file manually
 4. Run ingest.py with that file
 
+---
+
+#### MANDATORY STEP 1: Calculate Batch Sizes
+
+**Before analyzing ANY cluster, you MUST calculate required batch sizes.**
+
+```bash
+# Show batch size requirements for 80% coverage
+venv/bin/python3 prepare_batch.py --coverage
+```
+
+This displays:
+```
+════════════════════════════════════════════════════════════
+BATCH SIZE REQUIREMENTS (80% COVERAGE TARGET)
+════════════════════════════════════════════════════════════
+
+Formula: Required Emails = ceil(Cluster Size × 0.8)
+
+────────────────────────────────────────────────────────────
+  ⬚ Cluster 0: 45 emails → Need 36 (0 done, 0%)
+  ⬚ Cluster 1: 32 emails → Need 26 (0 done, 0%)
+  ⬚ Cluster 2: 28 emails → Need 23 (0 done, 0%)
+────────────────────────────────────────────────────────────
+
+  TOTAL: 105 emails → Need 85 for 80% coverage
+  CURRENT: 0 analyzed (0% overall)
+
+  📊 Still need: 85 more emails
+════════════════════════════════════════════════════════════
+```
+
+**Coverage Rules:**
+| Rule | Requirement |
+|------|-------------|
+| **Minimum threshold** | 80% of each cluster MUST be analyzed |
+| **Enforcement** | `ingest.py` will REJECT batches that leave coverage below 80% |
+| **Override** | Use `--force` flag only with documented justification |
+
+**Why 80%?** Lower coverage creates unreliable personas. A persona built from 50% of a cluster may miss critical voice patterns.
+
+---
+
 #### Workflow Steps
 
 ```bash
@@ -1196,7 +1239,10 @@ Once installed, test the skill by asking:
 | `embed_emails.py` | Generate vectors | enriched_samples/ | embeddings.npy |
 | `cluster_emails.py` | Math clustering | embeddings.npy | clusters.json |
 | `prepare_batch.py` | Format for analysis | clusters.json | stdout (console)** |
+| `prepare_batch.py --coverage` | Show batch size requirements | clusters.json | Console output |
+| `prepare_batch.py --target-coverage 0.9` | Custom coverage threshold | clusters.json | Console output |
 | `ingest.py` | Save persona | batches/*.json | persona_registry.json |
+| `ingest.py --force` | Bypass coverage validation | batches/*.json | persona_registry.json |
 
 *\*\*`prepare_batch.py` prints emails + instructions to console. LLM must analyze and create `batches/*.json` manually.*
 

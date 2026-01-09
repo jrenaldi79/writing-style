@@ -29,6 +29,10 @@ SAMPLES_DIR = get_path("samples")
 RAW_SAMPLES_DIR = get_path("raw_samples")
 PERSONA_FILE = get_path("persona_registry.json")
 STATE_FILE = get_path("state.json")
+CLUSTERS_FILE = get_path("clusters.json")
+
+# Minimum coverage threshold for persona quality
+MIN_COVERAGE_THRESHOLD = 0.8
 
 
 def load_json(path):
@@ -46,13 +50,141 @@ def save_json(path, data):
         json.dump(data, f, indent=2)
 
 
-def ingest_batch(batch_file, dry_run=False):
-    """Process a batch analysis file."""
-    
+def validate_batch_coverage(batch_data: dict, force: bool = False) -> tuple:
+    """Validate that batch ingestion meets coverage requirements.
+
+    Checks if the batch covers a cluster and whether ingesting it would
+    result in sub-threshold coverage (< 80%).
+
+    Args:
+        batch_data: The batch JSON data with samples
+        force: If True, return warnings but don't block
+
+    Returns:
+        tuple: (should_proceed: bool, message: str)
+    """
+    if not CLUSTERS_FILE.exists():
+        # No clusters - legacy mode, allow ingestion
+        return True, ""
+
+    clusters_data = load_json(CLUSTERS_FILE)
+    if not clusters_data:
+        return True, ""
+
+    cluster_id = batch_data.get("cluster_id")
+    if cluster_id is None:
+        # No cluster_id in batch - legacy mode, allow
+        return True, ""
+
+    # Find the cluster
+    cluster = None
+    for c in clusters_data.get('clusters', []):
+        if c.get('id') == cluster_id:
+            cluster = c
+            break
+
+    if not cluster:
+        return True, f"Warning: Cluster {cluster_id} not found in clusters.json"
+
+    # Count already analyzed samples
+    analyzed_ids = set()
+    if SAMPLES_DIR.exists():
+        for f in SAMPLES_DIR.glob("*.json"):
+            analyzed_ids.add(f.stem)
+
+    sample_ids = cluster.get('sample_ids', [])
+    total_in_cluster = len(sample_ids)
+
+    if total_in_cluster == 0:
+        return True, ""
+
+    # Count samples in this batch that belong to this cluster
+    batch_samples = batch_data.get("samples", [])
+    batch_sample_ids = set()
+    for s in batch_samples:
+        sid = s.get("id", "")
+        # Handle both "email_xxx" and "xxx" formats
+        if sid.startswith("email_"):
+            batch_sample_ids.add(sid)
+            batch_sample_ids.add(sid[6:])  # Also add without prefix
+        else:
+            batch_sample_ids.add(sid)
+            batch_sample_ids.add(f"email_{sid}")  # Also add with prefix
+
+    # Current coverage before this batch
+    already_analyzed = sum(1 for s in sample_ids if s in analyzed_ids)
+    current_coverage = already_analyzed / total_in_cluster
+
+    # New samples from this batch (not already ingested)
+    new_from_batch = sum(1 for s in sample_ids
+                        if s in batch_sample_ids and s not in analyzed_ids)
+
+    # Projected coverage after this batch
+    projected_analyzed = already_analyzed + new_from_batch
+    projected_coverage = projected_analyzed / total_in_cluster
+
+    required = int(total_in_cluster * MIN_COVERAGE_THRESHOLD + 0.999)  # ceil
+
+    # Check if this is a partial batch that would leave coverage below threshold
+    if projected_coverage < MIN_COVERAGE_THRESHOLD:
+        remaining = total_in_cluster - projected_analyzed
+        deficit = required - projected_analyzed
+
+        warning = f"""
+{'═' * 60}
+⚠️  COVERAGE VALIDATION FAILED
+{'═' * 60}
+
+Cluster {cluster_id}: {total_in_cluster} emails
+  Required for {MIN_COVERAGE_THRESHOLD:.0%} coverage: {required} emails
+  Already analyzed: {already_analyzed}
+  In this batch: {new_from_batch}
+  Projected total: {projected_analyzed} ({projected_coverage:.0%})
+
+  ❌ Still need {deficit} more emails to reach threshold
+
+{'─' * 60}
+OPTIONS:
+
+1. RECOMMENDED: Include more emails in this batch
+   Run: python prepare_batch.py --cluster {cluster_id}
+   This will show remaining emails in the cluster.
+
+2. FORCE: Proceed anyway (not recommended - degrades persona quality)
+   Run: python ingest.py {batch_data.get('batch_id', 'batch_XXX')}.json --force
+
+{'═' * 60}
+"""
+
+        if force:
+            return True, warning.replace("FAILED", "WARNING (bypassed with --force)")
+        else:
+            return False, warning
+
+    return True, ""
+
+
+def ingest_batch(batch_file, dry_run=False, force=False):
+    """Process a batch analysis file.
+
+    Args:
+        batch_file: Path to the batch JSON file
+        dry_run: If True, preview without saving
+        force: If True, bypass coverage validation
+    """
+
     # Load batch data
     with open(batch_file) as f:
         batch = json.load(f)
-    
+
+    # Validate coverage requirements (unless dry-run)
+    if not dry_run:
+        should_proceed, message = validate_batch_coverage(batch, force=force)
+        if message:
+            print(message)
+        if not should_proceed:
+            return False
+
     samples = batch.get("samples", [])
     new_personas = batch.get("new_personas", [])
     
@@ -285,18 +417,21 @@ if __name__ == "__main__":
 Examples:
   python ingest.py batch_001.json           # Process a batch
   python ingest.py batch_001.json --dry-run # Preview without saving
+  python ingest.py batch_001.json --force   # Bypass coverage validation
   python ingest.py --status                 # Show current status
         """
     )
     parser.add_argument("batch_file", nargs="?", help="JSON file with batch analysis")
     parser.add_argument("--dry-run", action="store_true", help="Preview without saving")
+    parser.add_argument("--force", "-f", action="store_true",
+                        help="Bypass coverage validation (not recommended)")
     parser.add_argument("--status", action="store_true", help="Show ingest status")
-    
+
     args = parser.parse_args()
-    
+
     if args.status:
         show_status()
     elif args.batch_file:
-        ingest_batch(args.batch_file, dry_run=args.dry_run)
+        ingest_batch(args.batch_file, dry_run=args.dry_run, force=args.force)
     else:
         parser.print_help()

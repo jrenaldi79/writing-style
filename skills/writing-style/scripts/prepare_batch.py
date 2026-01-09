@@ -499,6 +499,73 @@ def check_incomplete_clusters(target_cluster: int, analyzed: set) -> List[tuple]
     return incomplete
 
 
+def show_coverage_calculation(target_coverage: float = 0.8):
+    """Show batch size requirements for achieving target coverage.
+
+    Displays a banner with:
+    - Cluster sizes and required batch sizes
+    - Total emails needed for target coverage
+    - Current progress if any analysis exists
+
+    Args:
+        target_coverage: Target coverage percentage (default 0.8 = 80%)
+    """
+    clusters_data = load_cluster_data()
+    if not clusters_data:
+        print("❌ No clusters found. Run: python cluster_emails.py")
+        return
+
+    analyzed = get_analyzed_ids()
+
+    print(f"\n{'═' * 60}")
+    print(f"BATCH SIZE REQUIREMENTS ({target_coverage:.0%} COVERAGE TARGET)")
+    print(f"{'═' * 60}")
+    print(f"\nFormula: Required Emails = ceil(Cluster Size × {target_coverage})")
+    print(f"\n{'─' * 60}")
+
+    total_required = 0
+    total_analyzed = 0
+    total_emails = 0
+
+    for cluster in clusters_data.get('clusters', []):
+        if cluster.get('is_noise'):
+            continue
+
+        cid = cluster['id']
+        sample_ids = cluster.get('sample_ids', [])
+        size = len(sample_ids)
+        required = int(size * target_coverage + 0.999)  # ceil
+        analyzed_count = sum(1 for s in sample_ids if s in analyzed)
+        coverage = analyzed_count / size if size else 0
+
+        total_required += required
+        total_analyzed += analyzed_count
+        total_emails += size
+
+        # Status indicator
+        if analyzed_count >= required:
+            status = "✅"
+        elif analyzed_count > 0:
+            status = "⏳"
+        else:
+            status = "⬚"
+
+        print(f"  {status} Cluster {cid}: {size} emails → Need {required} ({analyzed_count} done, {coverage:.0%})")
+
+    print(f"{'─' * 60}")
+    overall_coverage = total_analyzed / total_emails if total_emails else 0
+    print(f"\n  TOTAL: {total_emails} emails → Need {total_required} for {target_coverage:.0%} coverage")
+    print(f"  CURRENT: {total_analyzed} analyzed ({overall_coverage:.0%} overall)")
+
+    if total_analyzed < total_required:
+        remaining = total_required - total_analyzed
+        print(f"\n  📊 Still need: {remaining} more emails")
+    else:
+        print(f"\n  ✅ Coverage target met!")
+
+    print(f"{'═' * 60}\n")
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Prepare email batch for analysis',
@@ -508,20 +575,27 @@ Examples:
   python prepare_batch.py                # Prepare next unanalyzed cluster
   python prepare_batch.py --cluster 2    # Prepare cluster 2
   python prepare_batch.py --all          # Show all clusters status
+  python prepare_batch.py --coverage     # Show batch size requirements
   python prepare_batch.py --legacy -c 30 # Legacy mode (random emails)
         """
     )
     parser.add_argument('--cluster', '-C', type=int, help='Specific cluster ID')
     parser.add_argument('--all', '-a', action='store_true', help='Show all clusters status')
+    parser.add_argument('--coverage', action='store_true',
+                        help='Show batch size requirements for target coverage')
+    parser.add_argument('--target-coverage', type=float, default=0.8,
+                        help='Target coverage percentage (default: 0.8 = 80%%)')
     parser.add_argument('--legacy', action='store_true', help='Legacy mode (no clustering)')
     parser.add_argument('--count', '-c', type=int, default=30, help='Email count for legacy mode')
     parser.add_argument('--force', '-f', action='store_true',
                         help='Skip coverage warnings and proceed anyway')
     
     args = parser.parse_args()
-    
+
     if args.all:
         show_clusters_status()
+    elif args.coverage:
+        show_coverage_calculation(args.target_coverage)
     elif args.legacy:
         print(prepare_legacy_batch(args.count))
     elif args.cluster is not None:
