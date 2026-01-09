@@ -197,38 +197,86 @@ venv/bin/python3 cluster_emails.py
 
 **Purpose:** Analyze each cluster to build persona profiles with calibrated scoring.
 
+**IMPORTANT:** `prepare_batch.py` outputs analysis content to **stdout** (console), not to a file. The LLM/agent must:
+1. Read the output
+2. Analyze the emails
+3. Create the batch JSON file manually
+4. Run ingest.py with that file
+
+#### Workflow Steps
+
 ```bash
 # 1. Check state (should show preprocessing complete)
 cat state.json
 
-# 2. Read calibration anchors (CRITICAL for consistent scoring)
-# Find calibration.md dynamically
-CALIB_PATH=$(find ~/Documents/writing-style -name "calibration.md" -path "*/references/*" 2>/dev/null | head -1)
-cat "$CALIB_PATH"
+# 2. View cluster status
+venv/bin/python3 prepare_batch.py --all
 
-# 3. Prepare first cluster for analysis
-python3 prepare_batch.py
+# 3. Prepare first cluster (outputs to CONSOLE, not file)
+venv/bin/python3 prepare_batch.py
+# This prints: calibration reference + emails + JSON schema instructions
+# READ THIS OUTPUT CAREFULLY - it contains the emails to analyze
+```
 
-# Output: batches/batch_001.json with cluster emails + calibration
+#### LLM Analysis Step (Manual)
 
-# 4. Analyze cluster using LLM
-# Use calibration.md as reference for tone scores (1-10)
-# Generate persona definition with tone_vectors
+After running `prepare_batch.py`, the LLM should:
 
-# 5. Save analysis results
-python3 ingest.py batches/batch_001.json
+1. **Read the console output** - Contains emails and instructions
+2. **Analyze each email** for tone, formality, structure, patterns
+3. **Create a persona** based on the cluster characteristics
+4. **Write the batch JSON file** following the schema printed in the output
 
-# 6. Repeat steps 3-5 for each cluster
-python3 prepare_batch.py  # Gets next cluster
-# ... analyze ...
-python3 ingest.py batches/batch_002.json
-# Continue until all clusters analyzed
+**Create file: `batches/batch_001.json`** with this structure:
+```json
+{
+  "batch_id": "batch_001",
+  "analyzed_at": "2026-01-09T12:00:00Z",
+  "cluster_id": 0,
+  "calibration_referenced": true,
+  "new_personas": [
+    {
+      "name": "Formal Executive",
+      "description": "Used for communication with executives and leadership",
+      "characteristics": {
+        "formality": 8, "warmth": 5, "authority": 7, "directness": 6,
+        "typical_greeting": "Hi",
+        "typical_closing": "Best, JR"
+      }
+    }
+  ],
+  "samples": [
+    {
+      "id": "email_abc123",
+      "source": "email",
+      "persona": "Formal Executive",
+      "confidence": 0.85,
+      "analysis": {"formality": 8, "warmth": 5},
+      "context": {"recipient_type": "executive", "audience": "superior"}
+    }
+  ]
+}
+```
+
+#### Continue Processing
+
+```bash
+# 4. Ingest the batch you created
+venv/bin/python3 ingest.py batches/batch_001.json
+
+# 5. Repeat for next cluster
+venv/bin/python3 prepare_batch.py  # Gets next unanalyzed cluster
+# ... LLM analyzes and creates batch_002.json ...
+venv/bin/python3 ingest.py batches/batch_002.json
+
+# 6. Continue until all clusters are done
+venv/bin/python3 prepare_batch.py --all  # Check remaining
 ```
 
 **Key Files:**
-- `calibration.md` - Anchor examples for consistent scoring
-- `prepare_batch.py` - Formats cluster for analysis
-- `ingest.py` - Saves persona definitions
+- `calibration.md` - Anchor examples for consistent scoring (in references/)
+- `prepare_batch.py` - Outputs cluster emails to console for analysis
+- `ingest.py` - Ingests your analysis JSON into persona_registry.json
 - `persona_registry.json` - All discovered personas
 
 **Next:** Stop here. Start new chat for Session 4 (Generation) or Session 3 (LinkedIn).
@@ -818,8 +866,10 @@ After generating the prompt, validate it interactively:
 | `enrich_emails.py` | Add metadata | filtered_samples/ | enriched_samples/ |
 | `embed_emails.py` | Generate vectors | enriched_samples/ | embeddings.npy |
 | `cluster_emails.py` | Math clustering | embeddings.npy | clusters.json |
-| `prepare_batch.py` | Format for analysis | clusters.json | batches/*.json |
+| `prepare_batch.py` | Format for analysis | clusters.json | stdout (console)** |
 | `ingest.py` | Save persona | batches/*.json | persona_registry.json |
+
+*\*\*`prepare_batch.py` prints emails + instructions to console. LLM must analyze and create `batches/*.json` manually.*
 
 *\*MCP Server = Google Workspace MCP (`@presto-ai/google-workspace-mcp`). Must be installed in your chat client. Authentication is handled by the MCP server - no credentials.json required.*
 
@@ -916,6 +966,17 @@ cp /path/from/above/*.py ~/Documents/my-writing-style/
 
 **"Missing dependencies"**
 - Run: `pip install sentence-transformers scikit-learn numpy hdbscan`
+- The `requirements.txt` is in the skill directory (`~/skills/writing-style/requirements.txt`)
+
+**"prepare_batch.py doesn't create JSON file"**
+- This is expected behavior! `prepare_batch.py` outputs to **console/stdout**, not to a file
+- The LLM/agent must read the output, analyze the emails, and create `batches/batch_NNN.json` manually
+- See Session 2 documentation for the required JSON schema
+
+**"generate_system_prompt.py can't find file"**
+- The script reads from `persona_registry.json` (created by ingest.py)
+- Run `python3 generate_system_prompt.py --status` to check what data is available
+- Make sure you've run the full analysis pipeline including `ingest.py`
 
 **"MCP server not found" or "Authentication required" (Email)**
 - The email pipeline requires the Google Workspace MCP server
