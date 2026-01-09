@@ -20,7 +20,9 @@
 ├── claude.md                   # Agent manifest (Sync with agents.md)
 ├── CHANGELOG.md                # Version history
 ├── README.md                   # Technical overview
-├── SYSTEM_PROMPT.md            # LLM coordinator instructions
+├── system_prompt.md            # Generic Skills System Prompt (copy to ChatWise)
+├── BOOTSTRAP.md                # Quick start user prompt for skill setup
+├── SYSTEM_PROMPT.md            # DEPRECATED - see system_prompt.md
 ├── requirements.txt            # Python dependencies
 ├── index.html                  # User guide & dashboard
 ├── skills/                     # Agent Skills Specification root

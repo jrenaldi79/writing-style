@@ -1,6 +1,15 @@
 ---
 name: writing-style
 description: Analyze written content (Emails & LinkedIn) to generate a personalized system prompt that replicates the user's authentic voice. Use when cloning writing style, analyzing emails, or building personas.
+triggers:
+  - "Clone my email style"
+  - "Clone my writing voice"
+  - "Run Email Pipeline"
+  - "Run LinkedIn Pipeline"
+  - "Generate writing assistant"
+  - "Continue email analysis"
+  - "Analyze clusters"
+  - "Show project status"
 ---
 
 # Writing Style Clone v3.3
@@ -15,32 +24,36 @@ Analyze writing samples to discover personas and generate personalized writing a
 
 **Script Location:** Use dynamic path finding (see setup commands) to handle nested GitHub repo structures. Scripts may be at different depths depending on how the repo was extracted.
 
-## 📂 Repository Structure (CRITICAL FOR SETUP)
+## 📂 Directory Architecture
 
-The GitHub repo has this nested structure after extraction:
+Skills (code) and data (outputs) are intentionally separated:
+
 ```
-writing-style/
-├── writing-style-main/          # Extracted from zip
-│   ├── skills/
-│   │   └── writing-style/
-│   │       ├── scripts/         # ← Python scripts are HERE
-│   │       │   ├── fetch_emails.py
-│   │       │   ├── filter_emails.py
-│   │       │   └── ... (all .py files)
-│   │       └── references/
-│   │           └── calibration.md
-│   └── docs/
-└── (other files at root level)
+~/skills/writing-style/          # Skill installation (read-only code)
+├── SKILL.md                     # This file - workflow documentation
+├── scripts/                     # Python automation scripts
+│   ├── fetch_emails.py
+│   ├── filter_emails.py
+│   └── ... (all .py files)
+└── references/                  # Supporting documentation
+    └── calibration.md
+
+~/Documents/my-writing-style/    # User data (generated outputs)
+├── state.json                   # Workflow state
+├── venv/                        # Python virtual environment
+├── clusters.json                # Email personas
+├── linkedin_persona.json        # LinkedIn persona
+└── prompts/                     # Final outputs
+    └── writing_assistant.md
 ```
 
-**CRITICAL PATHS:**
-- Scripts location: `~/Documents/writing-style/writing-style-main/skills/writing-style/scripts/*.py`
-- Calibration guide: `~/Documents/writing-style/writing-style-main/skills/writing-style/references/calibration.md`
+**Primary skill location:** `~/skills/writing-style/`
 
-**Alternative paths** (if repo cloned directly or manually reorganized):
-- May also be at: `~/Documents/writing-style/skills/writing-style/scripts/*.py`
+**Fallback locations** (checked in order if primary not found):
+1. `~/Documents/skills/writing-style/`
+2. `~/.local/share/skills/writing-style/`
 
-**Recommendation:** Use dynamic path finding (see setup commands below) to handle any structure.
+**Why separate?** Skills are "programs" (rarely modified), data is user-specific. Clean uninstall without losing outputs.
 
 ---
 
@@ -48,26 +61,30 @@ writing-style/
 
 Before starting any pipeline, verify these critical paths:
 
-**Step 1: Verify repo structure discovered**
+**Step 1: Find skill installation**
 ```bash
-find ~/Documents/writing-style -name "fetch_emails.py" 2>/dev/null
+# Check primary and fallback locations
+SKILL_DIR=""
+for dir in ~/skills/writing-style ~/Documents/skills/writing-style ~/.local/share/skills/writing-style; do
+  [ -f "$dir/SKILL.md" ] && SKILL_DIR="$dir" && break
+done
+echo "SKILL_DIR: ${SKILL_DIR:-NOT_FOUND}"
 ```
-Expected output: Path containing `/skills/writing-style/scripts/`
+Expected output: Path to skill directory
 
 **Step 2: Verify scripts accessible**
 ```bash
-SCRIPTS_PATH=$(find ~/Documents/writing-style -type d -name "scripts" -path "*/skills/writing-style/*" 2>/dev/null | head -1)
-ls -1 "$SCRIPTS_PATH"/*.py 2>/dev/null | wc -l
+ls -1 "$SKILL_DIR/scripts"/*.py 2>/dev/null | wc -l
 ```
 Expected output: Number > 15 (should find all Python scripts)
 
-**Step 3: Verify work directory state**
+**Step 3: Verify data directory state**
 ```bash
-ls ~/Documents/my-writing-style/state.json 2>/dev/null || echo "NEW_PROJECT"
+cat ~/Documents/my-writing-style/state.json 2>/dev/null || echo "NEW_PROJECT"
 ```
 Expected output: Shows state.json content OR "NEW_PROJECT"
 
-**If any check fails:** Run recovery commands in troubleshooting section before proceeding.
+**If skill not found:** Install to `~/skills/writing-style/` or run recovery commands in troubleshooting section.
 
 ---
 
@@ -114,30 +131,41 @@ Session 4: Generation → Final output → DONE!
 **Purpose:** Fetch emails, filter quality, enrich metadata, cluster mathematically.
 
 ```bash
-# 1. Create directories
-mkdir -p ~/Documents/my-writing-style/{samples,prompts,raw_samples,batches,filtered_samples,enriched_samples,validation_set}
+# 1. Find skill installation
+SKILL_DIR=""
+for dir in ~/skills/writing-style ~/Documents/skills/writing-style ~/.local/share/skills/writing-style; do
+  [ -f "$dir/SKILL.md" ] && SKILL_DIR="$dir" && break
+done
 
-# 2. Find and copy scripts dynamically
-SCRIPTS_PATH=$(find ~/Documents/writing-style -type d -name "scripts" -path "*/skills/writing-style/*" 2>/dev/null | head -1)
-if [ -z "$SCRIPTS_PATH" ]; then
-  echo "ERROR: Cannot find scripts directory. Re-downloading repo..."
-  cd ~/Documents/writing-style && rm -rf writing-style-main && \
-  curl -sL https://github.com/jrenaldi79/writing-style/archive/refs/heads/main.zip -o repo.zip && \
-  unzip -q repo.zip
-  SCRIPTS_PATH=$(find ~/Documents/writing-style -type d -name "scripts" -path "*/skills/writing-style/*" | head -1)
+if [ -z "$SKILL_DIR" ]; then
+  echo "ERROR: Skill not installed. Installing to ~/skills/writing-style..."
+  mkdir -p ~/skills/writing-style
+  curl -sL https://github.com/jrenaldi79/writing-style/archive/refs/heads/main.zip -o /tmp/skill.zip
+  unzip -q /tmp/skill.zip -d /tmp
+  cp -r /tmp/writing-style-main/skills/writing-style/* ~/skills/writing-style/
+  rm -rf /tmp/skill.zip /tmp/writing-style-main
+  SKILL_DIR=~/skills/writing-style
 fi
-cp "$SCRIPTS_PATH"/*.py ~/Documents/my-writing-style/
-cd ~/Documents/my-writing-style
 
-# 3. Initialize state management
-python3 -c 'from state_manager import init_state; init_state(".")'
+# 2. Create data directories
+DATA_DIR=~/Documents/my-writing-style
+mkdir -p "$DATA_DIR"/{samples,prompts,raw_samples,batches,filtered_samples,enriched_samples,validation_set}
 
-# 4. Run preprocessing pipeline
-python3 fetch_emails.py --count 200 --holdout 0.15
-python3 filter_emails.py
-python3 enrich_emails.py
-python3 embed_emails.py
-python3 cluster_emails.py
+# 3. Copy scripts to data directory and setup venv
+cp "$SKILL_DIR"/scripts/*.py "$DATA_DIR"/
+cd "$DATA_DIR"
+python3 -m venv venv
+venv/bin/python3 -m pip install -r "$SKILL_DIR"/requirements.txt
+
+# 4. Initialize state management
+venv/bin/python3 -c 'from state_manager import init_state; init_state(".")'
+
+# 5. Run preprocessing pipeline
+venv/bin/python3 fetch_emails.py --count 200 --holdout 0.15
+venv/bin/python3 filter_emails.py
+venv/bin/python3 enrich_emails.py
+venv/bin/python3 embed_emails.py
+venv/bin/python3 cluster_emails.py
 ```
 
 **Output:**

@@ -505,18 +505,25 @@
                         <li><strong>ID:</strong> <span class="id-highlight">writing-style</span> (this exact ID is required for the buttons to work)</li>
                         <li><strong>Name:</strong> Writing Style Clone (or whatever you prefer)</li>
                     </ul>
-                    <p>Copy the system prompt below. It includes a <strong>Smart Bootstrap</strong> script that automatically installs dependencies and configures your environment when you start the chat:</p>
-                    
+                    <p>Copy the <strong>Generic Skills System Prompt</strong> below. This teaches the AI how to discover and use skills:</p>
+
                     <div class="prompt-box">
                         <button class="copy-btn" onclick="copyPrompt(this, 'system-prompt')">Copy</button>
                         <code id="system-prompt">Loading...</code>
                     </div>
                 </div>
-                
+
                 <div class="setup-step">
                     <h3>Save the Assistant</h3>
                     <p>Click Save. You're done with setup!</p>
                     <p>Now all the buttons below will automatically open your <span class="id-highlight">writing-style</span> assistant.</p>
+                </div>
+
+                <div class="setup-step">
+                    <h3>Workflow Documentation</h3>
+                    <p>The complete workflow instructions are in <code>skills/writing-style/SKILL.md</code>.</p>
+                    <p>The AI will automatically read this file when you trigger the skill.</p>
+                    <a href="skills/writing-style/SKILL.md" class="cta-button secondary" style="margin-top: 8px; font-size: 0.9rem; padding: 10px 20px;">View Full Workflow Documentation</a>
                 </div>
             </div>
         </div>
@@ -710,24 +717,15 @@
     </div>
     
     <script>
-        // Fetch and inject system prompt from SYSTEM_PROMPT.md
-        fetch('SYSTEM_PROMPT.md')
+        // Fetch and inject system prompt from system_prompt.md
+        fetch('system_prompt.md')
             .then(response => response.text())
             .then(text => {
-                // Extract content between PROMPT_START and PROMPT_END markers
-                const startMarker = '<!-- PROMPT_START -->';
-                const endMarker = '<!-- PROMPT_END -->';
-                const startIndex = text.indexOf(startMarker);
-                const endIndex = text.indexOf(endMarker);
-                
-                if (startIndex !== -1 && endIndex !== -1) {
-                    const prompt = text.substring(startIndex + startMarker.length, endIndex).trim();
-                    document.getElementById('system-prompt').textContent = prompt;
-                }
+                document.getElementById('system-prompt').textContent = text.trim();
             })
             .catch(err => {
                 console.error('Failed to load system prompt:', err);
-                document.getElementById('system-prompt').textContent = 'Error loading prompt. See SYSTEM_PROMPT.md';
+                document.getElementById('system-prompt').textContent = 'Error loading prompt. See system_prompt.md';
             });
         
         function copyPrompt(btn, id) {

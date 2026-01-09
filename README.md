@@ -18,12 +18,15 @@ Analyze written content (Emails & LinkedIn) to generate a personalized system pr
 Open `index.html` in your browser. It provides a clickable dashboard to launch every step of the process.
 
 **2. Use the System Prompt:**
-Copy the content of `SYSTEM_PROMPT.md` into your AI assistant. This includes a **Smart Bootstrap** script that automatically handles:
-- Environment setup (`venv/` creation)
-- Dependency installation
-- Cross-platform configuration (Mac/Windows/Linux)
+Copy the content of `system_prompt.md` into your AI assistant. This generic skills system prompt teaches the AI how to:
+- Discover and load skills from the registry
+- Execute skill workflows from SKILL.md
+- Manage state across sessions
 
-**Skill Trigger:** Say "Clone my email style" or "Run Email Pipeline"
+**3. Start with Bootstrap:**
+Use `BOOTSTRAP.md` as your initial user prompt to check environment status and begin.
+
+**Skill Triggers:** "Clone my email style", "Run Email Pipeline", "Run LinkedIn Pipeline"
 
 ---
 
@@ -31,19 +34,21 @@ Copy the content of `SYSTEM_PROMPT.md` into your AI assistant. This includes a *
 
 ```
 /writing-style/
-  ├── SYSTEM_PROMPT.md          # Active system prompt (Copy this to Claude/ChatWise)
+  ├── system_prompt.md          # Generic Skills System Prompt (Copy to ChatWise)
+  ├── BOOTSTRAP.md              # Quick start user prompt for skill setup
+  ├── SYSTEM_PROMPT.md          # DEPRECATED - see system_prompt.md
   ├── README.md                 # This file
   ├── CHANGELOG.md              # Version history
   ├── index.html                # Interactive user guide & dashboard
   ├── agents.md                 # Agent manifest
-  
+
   ├── /docs/                    # Project documentation
   │   ├── COMPLETION_SUMMARY.md
   │   └── IMPLEMENTATION_PLAN.md
-  
+
   └── /skills/                  # Anthropic Skill Format
       └── /writing-style/       # Skill directory
-          ├── SKILL.md          # Main skill workflow & instructions
+          ├── SKILL.md          # Single source of truth for workflow
           ├── /scripts/         # Python automation (bundled with skill)
           │   ├── fetch_emails.py
           │   ├── fetch_linkedin_mcp.py
@@ -83,9 +88,10 @@ Copy the content of `SYSTEM_PROMPT.md` into your AI assistant. This includes a *
 
 ### For Users
 1. **Start here:** `index.html` - Interactive dashboard
-2. **Workflow logic:** `skills/writing-style/SKILL.md` - Complete technical guide
-3. **Tone scoring:** `skills/writing-style/references/calibration.md` - Analysis anchors
-4. **System prompt:** `SYSTEM_PROMPT.md` - The "brain" of the agent
+2. **System prompt:** `system_prompt.md` - Generic skills system prompt (copy to ChatWise)
+3. **Bootstrap:** `BOOTSTRAP.md` - Quick start user prompt
+4. **Workflow logic:** `skills/writing-style/SKILL.md` - Single source of truth for workflow
+5. **Tone scoring:** `skills/writing-style/references/calibration.md` - Analysis anchors
 
 ### For Developers
 - **Implementation Status:** `docs/COMPLETION_SUMMARY.md`
@@ -175,7 +181,9 @@ skills/writing-style/
 ## 🚦 Quick Commands
 
 ### Automated Setup
-Just use the `SYSTEM_PROMPT.md` in your chat client. It contains a self-healing bootstrap script that finds scripts and installs dependencies automatically.
+1. Copy `system_prompt.md` into your ChatWise assistant's system prompt
+2. Use `BOOTSTRAP.md` as your first user prompt to check environment status
+3. The AI will automatically load `SKILL.md` and guide you through the workflow
 
 ### Manual Usage
 If you prefer running scripts manually:
