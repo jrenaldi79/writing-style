@@ -212,14 +212,32 @@ def ingest_batch(batch_file, dry_run=False):
             print(f"   Run: python prepare_batch.py")
             print(f"   Remaining clusters: {remaining_clusters}")
         else:
+            # Check for validation set
+            validation_dir = get_path("validation_set")
+            validation_count = len(list(validation_dir.glob("*.json"))) if validation_dir.exists() else 0
+
             print(f"\n{'═' * 60}")
             print("✅ ALL CLUSTERS ANALYZED!")
             print(f"{'═' * 60}")
-            print(f"\nEmail personas are ready. You can now:")
-            print(f"   1. Generate your writing clone skill:")
-            print(f"      python generate_skill.py --name <your-name>")
-            print(f"   2. Or add LinkedIn voice first (optional):")
-            print(f"      START NEW CHAT → 'Run LinkedIn pipeline'")
+            print(f"\nEmail personas are ready.")
+
+            if validation_count > 0:
+                print(f"\n📊 VALIDATION DATA AVAILABLE: {validation_count} held-out emails")
+                print(f"\nRecommended next steps:")
+                print(f"   1. VALIDATE personas first (blind test):")
+                print(f"      START NEW CHAT (Session 3: Judge)")
+                print(f"      python prepare_validation.py")
+                print(f"      python validate_personas.py --auto")
+                print(f"\n   2. THEN generate your writing clone skill:")
+                print(f"      python generate_skill.py --name <your-name>")
+                print(f"\n   3. Or add LinkedIn voice (optional):")
+                print(f"      START NEW CHAT → 'Run LinkedIn pipeline'")
+            else:
+                print(f"\nYou can now:")
+                print(f"   1. Generate your writing clone skill:")
+                print(f"      python generate_skill.py --name <your-name>")
+                print(f"   2. Or add LinkedIn voice first (optional):")
+                print(f"      START NEW CHAT → 'Run LinkedIn pipeline'")
             print(f"{'═' * 60}\n")
 
     return True

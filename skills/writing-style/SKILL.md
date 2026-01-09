@@ -99,26 +99,36 @@ Expected output: Shows state.json content OR "NEW_PROJECT"
 
 ### Session Structure (Context Management)
 
-**Session 1: Preprocessing**
+**Session 1: Preprocessing (Architect)**
 - Fetch emails → Filter → Enrich → Embed → Cluster
-- **ENDS WITH:** Cluster summary + feedback checkpoint
+- **ENDS WITH:** Cluster summary + feedback checkpoint + validation set stats
 - **CONTEXT:** Heavy with fetch/filter logs
 - **ACTION:** Review clusters, adjust parameters if needed, then START NEW CHAT
 
-**Session 2: Email Persona Analysis + Generation**
+**Session 2: Email Persona Analysis (Analyst)**
 - LLM reads clusters, analyzes emails, creates persona JSONs
 - Runs ingest.py after each batch
-- Generate system prompt when all clusters done
+- **IMPORTANT:** Analyst never sees validation_set/ emails
 - **CONTEXT:** Can stay in this session - each cluster analysis is self-contained
+
+**Session 2b: Blind Validation (Judge) - Recommended**
+- Tests personas against held-out emails (15% reserved in Session 1)
+- Shows context only, compares generated patterns to actual replies
+- Suggests refinements based on mismatches
+- **CONTEXT:** Fresh chat for unbiased evaluation
 
 **Session 3: LinkedIn (Optional)**
 - Fetch posts → Filter → Generate LinkedIn persona
-- Generate final combined system prompt
 - **CONTEXT:** Separate from email pipeline
+
+**Session 4: Generation**
+- Generate final writing clone skill from all personas
+- **CONTEXT:** Clean context for final assembly
 
 **Why separate sessions?**
 - Preprocessing generates 6,500+ tokens of logs
 - Fresh context for creative persona analysis work
+- Validation requires unbiased evaluator (didn't see training data)
 - Scripts print session boundary reminders automatically
 
 **State Persistence:** All progress saved to `state.json` - resume anytime without data loss.
@@ -201,6 +211,87 @@ venv/bin/python3 embed_emails.py
 venv/bin/python3 cluster_emails.py
 ```
 
+---
+
+### 🛑 Health Check: Cluster Quality (DECISION POINT)
+
+After `cluster_emails.py` completes, **evaluate the output before proceeding**. The clustering algorithm's default settings may not be optimal for your writing patterns.
+
+#### Quick Assessment
+
+| Result | Status | Action |
+|--------|--------|--------|
+| **3-7 clusters** | ✅ Ideal | Proceed to Session 2 |
+| **< 3 clusters** | ⚠️ Underwhelming | See options below |
+| **> 10 clusters** | ⚠️ Fragmented | Consider merging or increasing min-cluster |
+| **> 30% Noise** | ⚠️ Poor fit | Switch to K-Means |
+
+#### Q: Did you get fewer than 3 clusters?
+
+This is common with HDBSCAN if your recent emails are stylistically consistent. **You have options:**
+
+**Option A (Recommended): Force variety with K-Means**
+```bash
+# Force 5 distinct personas
+venv/bin/python3 cluster_emails.py --algorithm kmeans -k 5
+```
+*Why:* K-Means guarantees exactly k clusters. Good when you know you write differently to different audiences.
+
+**Option B: Fetch more email history**
+```bash
+# Get 500 emails instead of 200
+venv/bin/python3 fetch_emails.py --count 500 --holdout 0.15
+venv/bin/python3 filter_emails.py
+venv/bin/python3 enrich_emails.py
+venv/bin/python3 embed_emails.py
+venv/bin/python3 cluster_emails.py
+```
+*Why:* More data = more variation. HDBSCAN may find natural clusters with larger samples.
+
+**Option C: Adjust HDBSCAN sensitivity**
+```bash
+# Smaller minimum cluster size = more clusters
+venv/bin/python3 cluster_emails.py --algorithm hdbscan --min-cluster 3
+```
+*Why:* Default min-cluster is 5. Lowering it allows smaller groups to form.
+
+#### Q: Did you get too much "Noise"?
+
+"Noise" = emails that didn't fit cleanly into any cluster. Some noise is fine (edge cases), but high noise is problematic.
+
+| Noise Level | Meaning | Action |
+|-------------|---------|--------|
+| **< 10%** | ✅ Normal | Proceed |
+| **10-30%** | ⚠️ Moderate | Consider K-Means |
+| **> 30%** | ❌ Poor fit | **Use K-Means** to force assignment |
+
+```bash
+# Force all emails into clusters (no noise)
+venv/bin/python3 cluster_emails.py --algorithm kmeans -k 5
+```
+
+#### Q: How many clusters should I target?
+
+| Email Volume | Suggested k | Rationale |
+|--------------|-------------|-----------|
+| 100-200 | 3-4 | Limited data, broader personas |
+| 200-500 | 4-6 | Good variety, distinct styles |
+| 500+ | 5-8 | Rich data, fine-grained personas |
+
+**Rule of thumb:** Start with `k = 5` if unsure. You can always re-cluster.
+
+#### Making the Decision
+
+**Ask yourself:** "Do I write differently to different audiences?"
+
+- **Yes, definitely** → Target 4-6 clusters (CEO vs team vs clients vs vendors)
+- **Somewhat** → Target 3-4 clusters
+- **I'm pretty consistent** → 2-3 clusters may be accurate!
+
+**Remember:** More clusters ≠ better. The goal is **meaningful** personas, not maximum fragmentation.
+
+---
+
 **Output:**
 - `clusters.json` - Discovered email clusters
 - `state.json` - Workflow state (enables resume)
@@ -208,7 +299,7 @@ venv/bin/python3 cluster_emails.py
 - `enriched_samples/` - Emails with metadata
 - `validation_set/` - Held-out samples for testing
 
-**Next:** Stop here. Start new chat for Session 2 (Analysis).
+**Next:** Once satisfied with cluster count, stop here. Start new chat for Session 2 (Analysis).
 
 ---
 
@@ -298,7 +389,112 @@ venv/bin/python3 prepare_batch.py --all  # Check remaining
 - `ingest.py` - Ingests your analysis JSON into persona_registry.json
 - `persona_registry.json` - All discovered personas
 
-**Next:** Stop here. Start new chat for Session 4 (Generation) or Session 3 (LinkedIn).
+**Next:** After all clusters analyzed, proceed to Session 2b (Validation) or skip to Session 3 (LinkedIn) / Session 4 (Generation).
+
+---
+
+### Session 2b: Blind Validation (Recommended)
+
+**Purpose:** Test persona accuracy against held-out emails before generating the final skill.
+
+**Why validate?**
+- Session 2 builds personas from training data only
+- Validation uses emails the LLM **never saw during analysis**
+- Catches persona mismatches before you commit to the final skill
+- Provides concrete refinement suggestions
+
+**Prerequisites:**
+- All clusters analyzed (Session 2 complete)
+- Validation set exists (`fetch_emails.py --holdout 0.15` was used in Session 1)
+
+```bash
+cd ~/Documents/my-writing-style
+
+# 1. Check validation data exists
+ls validation_set/*.json | wc -l
+# Should show 15-30 emails (15% of total)
+
+# 2. Extract context/reply pairs from validation emails
+venv/bin/python3 prepare_validation.py
+
+# 3. Run blind validation test
+venv/bin/python3 validate_personas.py --auto
+```
+
+#### How Blind Validation Works
+
+1. **Load personas** - Your draft personas from training data
+2. **Load validation pairs** - Each email split into:
+   - **Context**: What was received (quoted text, subject, sender)
+   - **Ground truth**: Your actual reply (hidden from scoring)
+3. **Inference**: For each validation email, determine which persona should respond
+4. **Scoring**: Compare expected patterns against actual reply
+5. **Refinement**: Suggest persona adjustments based on mismatches
+
+#### Validation Metrics
+
+| Metric | What It Measures |
+|--------|------------------|
+| **Tone Match** | Formality, warmth, contractions match persona? |
+| **Greeting Match** | Same greeting pattern (Hi vs Dear vs Hey)? |
+| **Closing Match** | Same sign-off style (Best vs Thanks vs Cheers)? |
+| **Overall Score** | Weighted composite (0-100) |
+
+#### Understanding Results
+
+```
+VALIDATION COMPLETE
+═══════════════════════════════════════════════════════════════
+
+Overall Score: 78/100
+
+Tone Match:
+  formality       [+++++++-]  72%
+  contractions    [+++++++++-] 90%
+  warmth          [+++++++--] 78%
+
+Structure Match:
+  greeting        [++++++---] 65%
+  closing         [++++++++] 82%
+
+SUGGESTED REFINEMENTS
+═══════════════════════════════════════════════════════════════
+
+  1. [Formal Executive] greeting
+     Current: Dear
+     Suggestion: Update typical_greeting to match: 'Hi'
+     Reason: Ground truth emails use different greeting pattern
+```
+
+#### Acting on Suggestions
+
+If validation score is low (<70%), consider:
+
+1. **Update persona_registry.json** with suggested changes
+2. **Re-run validation** to verify improvements
+3. **Iterate** until score is acceptable
+
+```bash
+# Edit personas based on suggestions
+cat persona_registry.json | jq '.personas["Formal Executive"].characteristics.typical_greeting = "Hi"' > temp.json
+mv temp.json persona_registry.json
+
+# Re-validate
+venv/bin/python3 validate_personas.py --auto
+```
+
+#### When to Skip Validation
+
+- Small email set (<100 emails) - holdout may be too small
+- Time-sensitive project - can validate post-generation
+- Low-stakes use case - informal writing assistance
+
+**Output:**
+- `validation_pairs.json` - Extracted context/reply pairs
+- `validation_results.json` - Detailed per-email results
+- `validation_report.json` - Summary with refinement suggestions
+
+**Next:** Proceed to Session 3 (LinkedIn) or Session 4 (Generation).
 
 ---
 
@@ -689,7 +885,10 @@ Once installed, test the skill by asking:
 │   │   └── ...
 │   ├── clusters.json          # Email cluster definitions
 │   ├── persona_registry.json  # All email personas
-│   └── linkedin_persona.json  # LinkedIn voice (if used)
+│   ├── linkedin_persona.json  # LinkedIn voice (if used)
+│   ├── validation_pairs.json  # Context/reply pairs (for validation)
+│   ├── validation_results.json # Per-email validation results
+│   └── validation_report.json # Summary with refinements
 │
 └── [name]-writing-clone/      # ← FINAL OUTPUT: Installable skill
     ├── SKILL.md               # Main skill file with frontmatter
@@ -899,6 +1098,13 @@ Once installed, test the skill by asking:
 *\*\*`prepare_batch.py` prints emails + instructions to console. LLM must analyze and create `batches/*.json` manually.*
 
 *\*MCP Server = Google Workspace MCP (`@presto-ai/google-workspace-mcp`). Must be installed in your chat client. Authentication is handled by the MCP server - no credentials.json required.*
+
+### Validation Scripts
+
+| Script | Purpose | Input | Output |
+|--------|---------|-------|--------|
+| `prepare_validation.py` | Extract context/reply pairs | validation_set/ | validation_pairs.json |
+| `validate_personas.py` | Blind validation test | personas + pairs | validation_report.json |
 
 ### LinkedIn Scripts
 

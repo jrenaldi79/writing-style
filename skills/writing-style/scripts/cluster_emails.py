@@ -355,6 +355,112 @@ def run_clustering(algorithm: str = 'auto', k: Optional[int] = None,
     print(f"{'═' * 50}")
     print(f"\n💾 Results saved to: {CLUSTERS_FILE}")
 
+    # ═══════════════════════════════════════════════════════════
+    # CLUSTER HEALTH CHECK - Automated quality assessment
+    # ═══════════════════════════════════════════════════════════
+    n_clusters = result['n_clusters']
+    n_noise = result['n_noise']
+    total_emails = len(embeddings)
+    noise_ratio = n_noise / total_emails if total_emails > 0 else 0
+
+    health_issues = []
+
+    # Check for too few clusters
+    if n_clusters < 3:
+        health_issues.append({
+            'type': 'few_clusters',
+            'severity': 'warning',
+            'message': f"Only {n_clusters} cluster(s) found - this may be underwhelming",
+            'suggestion': "Your recent emails may be stylistically consistent, or HDBSCAN needs tuning."
+        })
+
+    # Check for too many clusters
+    if n_clusters > 10:
+        health_issues.append({
+            'type': 'many_clusters',
+            'severity': 'warning',
+            'message': f"{n_clusters} clusters found - this may be too fragmented",
+            'suggestion': "Consider increasing --min-cluster to consolidate similar styles."
+        })
+
+    # Check for high noise
+    if noise_ratio > 0.30:
+        health_issues.append({
+            'type': 'high_noise',
+            'severity': 'warning',
+            'message': f"{noise_ratio:.0%} of emails are noise - poor cluster fit",
+            'suggestion': "HDBSCAN couldn't assign many emails. Try K-Means to force assignment."
+        })
+    elif noise_ratio > 0.10:
+        health_issues.append({
+            'type': 'moderate_noise',
+            'severity': 'info',
+            'message': f"{noise_ratio:.0%} of emails are noise - moderate",
+            'suggestion': "Some emails don't fit cleanly. This is often acceptable."
+        })
+
+    # Print health check results
+    print(f"\n{'═' * 60}")
+    print("🩺 CLUSTER HEALTH CHECK")
+    print(f"{'═' * 60}")
+
+    if not health_issues:
+        print(f"\n✅ HEALTHY: {n_clusters} clusters with {noise_ratio:.0%} noise")
+        print("   Your clustering results look good! Proceed to Session 2.")
+    else:
+        print(f"\n📊 Results: {n_clusters} clusters, {noise_ratio:.0%} noise")
+        print()
+
+        for issue in health_issues:
+            icon = "⚠️" if issue['severity'] == 'warning' else "ℹ️"
+            print(f"   {icon} {issue['message']}")
+            print(f"      → {issue['suggestion']}")
+            print()
+
+        # Provide specific recommendations based on issues
+        print(f"{'─' * 60}")
+        print("💡 RECOMMENDED ACTIONS:")
+        print(f"{'─' * 60}")
+
+        if any(i['type'] == 'few_clusters' for i in health_issues):
+            print("\n   Option A (Recommended): Force more clusters with K-Means")
+            print("   └─ venv/bin/python3 cluster_emails.py --algorithm kmeans -k 5")
+            print()
+            print("   Option B: Adjust HDBSCAN sensitivity")
+            print("   └─ venv/bin/python3 cluster_emails.py --min-cluster 3")
+            print()
+            print("   Option C: Fetch more email history")
+            print("   └─ venv/bin/python3 fetch_emails.py --count 500 --holdout 0.15")
+            print("      (then re-run filter, enrich, embed, cluster)")
+
+        if any(i['type'] == 'high_noise' for i in health_issues):
+            print("\n   Recommended: Switch to K-Means (no noise)")
+            print("   └─ venv/bin/python3 cluster_emails.py --algorithm kmeans -k 5")
+
+        if any(i['type'] == 'many_clusters' for i in health_issues):
+            print("\n   Recommended: Increase minimum cluster size")
+            print("   └─ venv/bin/python3 cluster_emails.py --min-cluster 8")
+            print("   Or use K-Means with fewer clusters:")
+            print("   └─ venv/bin/python3 cluster_emails.py --algorithm kmeans -k 5")
+
+        print()
+        print("   Or proceed anyway if these clusters make sense for your writing.")
+
+    print(f"{'═' * 60}")
+
+    # Quick reference for cluster count guidance
+    print(f"\n📈 CLUSTER COUNT GUIDE:")
+    print(f"   • 100-200 emails → aim for 3-4 clusters")
+    print(f"   • 200-500 emails → aim for 4-6 clusters")
+    print(f"   • 500+ emails   → aim for 5-8 clusters")
+    print(f"   You have {total_emails} emails → suggested range: ", end="")
+    if total_emails < 200:
+        print("3-4 clusters")
+    elif total_emails < 500:
+        print("4-6 clusters")
+    else:
+        print("5-8 clusters")
+
     # Session boundary and feedback checkpoint
     print(f"\n{'═' * 60}")
     print("🛑 SESSION 1 COMPLETE - CHECKPOINT")
@@ -389,16 +495,31 @@ def run_clustering(algorithm: str = 'auto', k: Optional[int] = None,
     print("If clusters look good, proceed to persona analysis.")
     print(f"{'─' * 60}")
 
+    # Check for validation set
+    validation_dir = get_path("validation_set")
+    validation_count = len(list(validation_dir.glob("*.json"))) if validation_dir.exists() else 0
+
     print(f"\n{'═' * 60}")
     print("👉 ACTION REQUIRED: START A NEW CHAT")
     print(f"{'═' * 60}")
     print("Preprocessing is complete. Your context window now contains")
     print("logs from fetching, filtering, and clustering.")
     print()
+    if validation_count > 0:
+        total_with_validation = sum(c['size'] for c in clusters) + validation_count
+        print(f"📊 DATA SPLIT:")
+        print(f"   Training set:    {sum(c['size'] for c in clusters)} emails (for persona analysis)")
+        print(f"   Validation set:  {validation_count} emails (held out for blind testing)")
+        print()
     print("To keep context clean for persona analysis:")
-    print("  1. START A NEW CHAT")
+    print("  1. START A NEW CHAT (Session 2: Analyst)")
     print("  2. Say: 'Continue with email persona analysis'")
     print()
+    if validation_count > 0:
+        print("After personas are built, you can validate them:")
+        print("  3. START ANOTHER NEW CHAT (Session 3: Judge)")
+        print("  4. Run: python validate_personas.py --auto")
+        print()
     print("State is saved - no progress will be lost.")
     print(f"{'═' * 60}\n")
 

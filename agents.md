@@ -8,10 +8,11 @@
 
 ## Architecture & Logic
 - **Nature:** Dual-pipeline (Email + LinkedIn) writing voice cloning.
-- **Workflow:** Multi-session (Preprocessing → Analysis → LinkedIn → Generation).
+- **Workflow:** Multi-session (Preprocessing → Analysis → Validation → LinkedIn → Generation).
 - **Environment:** Isolated `venv/` for all Python 3.8+ dependencies.
 - **State:** Persistent tracking via `state_manager.py` into `state.json`.
 - **MCP Pattern:** Scripts use internal `MCPClient` for token-efficient tool execution.
+- **Validation:** Blind testing against 15% held-out emails for persona accuracy.
 
 ## Directory Structure
 ```text
@@ -45,9 +46,11 @@
 │           ├── fetch_linkedin_mcp.py
 │           ├── filter_emails.py
 │           ├── filter_linkedin.py
-│           ├── generate_system_prompt.py
+│           ├── generate_skill.py
 │           ├── ingest.py
 │           ├── prepare_batch.py
+│           ├── prepare_validation.py
+│           ├── validate_personas.py
 │           ├── state_manager.py
 │           └── style_manager.py
 └── tests/                      # Validation suite
@@ -71,29 +74,40 @@ All scripts will automatically use this path.
 ## Build & Run Commands
 Use `venv/bin/python3` (or `venv\Scripts\python.exe` on Windows).
 
-### 1. Setup & Preprocessing
+### 1. Setup & Preprocessing (Session 1: Architect)
 ```bash
 # Setup env
 python3 -m venv venv && venv/bin/python3 -m pip install -r requirements.txt
-# Email pipeline
-venv/bin/python3 fetch_emails.py --count 200 && venv/bin/python3 filter_emails.py
+# Email pipeline with holdout for validation
+venv/bin/python3 fetch_emails.py --count 200 --holdout 0.15
+venv/bin/python3 filter_emails.py
 venv/bin/python3 enrich_emails.py && venv/bin/python3 embed_emails.py
 venv/bin/python3 cluster_emails.py
 ```
 
-### 2. Analysis & LinkedIn
+### 2. Analysis (Session 2: Analyst)
 ```bash
-# Email analysis
+# Email analysis (repeat for each cluster)
 venv/bin/python3 prepare_batch.py && venv/bin/python3 ingest.py batches/batch_NNN.json
-# LinkedIn pipeline
+```
+
+### 3. Validation (Session 2b: Judge) - Recommended
+```bash
+# Blind test against held-out emails
+venv/bin/python3 prepare_validation.py
+venv/bin/python3 validate_personas.py --auto
+```
+
+### 4. LinkedIn (Session 3) - Optional
+```bash
 venv/bin/python3 fetch_linkedin_mcp.py --profile "URL" && venv/bin/python3 filter_linkedin.py
 venv/bin/python3 cluster_linkedin.py
 ```
 
-### 3. Generation & Testing
+### 5. Generation & Testing (Session 4)
 ```bash
-# Final synthesis
-venv/bin/python3 generate_system_prompt.py
+# Generate installable skill package
+venv/bin/python3 generate_skill.py --name <your-name>
 # Testing
 cd tests && ../venv/bin/python3 run_tests.py
 ```
