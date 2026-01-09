@@ -26,9 +26,11 @@ from pathlib import Path
 from datetime import datetime
 
 # Configuration - BrightData MCP Server (NPX-based, like Gmail)
-DATA_DIR = Path.home() / "Documents" / "my-writing-style"
-OUTPUT_DIR = DATA_DIR / "linkedin_data"
-STATE_FILE = DATA_DIR / "linkedin_fetch_state.json"
+from config import get_data_dir, get_path
+
+DATA_DIR = get_data_dir()
+OUTPUT_DIR = get_path("linkedin_data")
+STATE_FILE = get_path("linkedin_fetch_state.json")
 
 
 def get_mcp_command(token):

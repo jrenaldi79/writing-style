@@ -11,7 +11,7 @@ import shutil
 from pathlib import Path
 
 # Add skill scripts to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "skill" / "scripts"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "skills" / "writing-style" / "scripts"))
 
 from test_fixtures import get_sample_email, get_all_valid_samples
 

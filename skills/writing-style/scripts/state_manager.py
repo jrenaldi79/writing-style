@@ -9,15 +9,20 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from config import get_data_dir
+
 _state_path: Path = None
 _data_dir: Path = None
 
 
-def init_state(data_dir: str) -> dict:
+def init_state(data_dir: str = None) -> dict:
     """Initialize state.json for a new project."""
     global _state_path, _data_dir
-    
-    _data_dir = Path(data_dir).expanduser().resolve()
+
+    if data_dir is None:
+        _data_dir = get_data_dir()
+    else:
+        _data_dir = Path(data_dir).expanduser().resolve()
     _state_path = _data_dir / "state.json"
     
     state = {
@@ -49,12 +54,14 @@ def init_state(data_dir: str) -> dict:
 def load_state(data_dir: Optional[str] = None) -> dict:
     """Load existing state."""
     global _state_path, _data_dir
-    
+
     if data_dir:
         _data_dir = Path(data_dir).expanduser().resolve()
-        _state_path = _data_dir / "state.json"
-    
-    if not _state_path or not _state_path.exists():
+    elif _data_dir is None:
+        _data_dir = get_data_dir()
+    _state_path = _data_dir / "state.json"
+
+    if not _state_path.exists():
         raise FileNotFoundError(
             "No state.json found. Run Phase 1: Setup first, or provide data_dir."
         )

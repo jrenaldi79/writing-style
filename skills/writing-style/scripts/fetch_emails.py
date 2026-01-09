@@ -21,11 +21,13 @@ from pathlib import Path
 from datetime import datetime
 
 # Configuration
+from config import get_data_dir, get_path
+
 MCP_COMMAND = ["npx", "-y", "@presto-ai/google-workspace-mcp"]
-DATA_DIR = Path.home() / "Documents" / "my-writing-style"
-OUTPUT_DIR = DATA_DIR / "raw_samples"
-VALIDATION_DIR = DATA_DIR / "validation_set"
-STATE_FILE = DATA_DIR / "fetch_state.json"
+DATA_DIR = get_data_dir()
+OUTPUT_DIR = get_path("raw_samples")
+VALIDATION_DIR = get_path("validation_set")
+STATE_FILE = get_path("fetch_state.json")
 
 
 class MCPClient:

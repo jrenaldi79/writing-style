@@ -23,11 +23,13 @@ from typing import List, Dict, Optional
 import sys
 
 # Directories
-DATA_DIR = Path.home() / "Documents" / "my-writing-style"
-ENRICHED_DIR = DATA_DIR / "enriched_samples"
-EMBEDDINGS_FILE = DATA_DIR / "embeddings.npy"
-INDEX_FILE = DATA_DIR / "embedding_index.json"
-REPORT_FILE = DATA_DIR / "embedding_report.json"
+from config import get_data_dir, get_path
+
+DATA_DIR = get_data_dir()
+ENRICHED_DIR = get_path("enriched_samples")
+EMBEDDINGS_FILE = get_path("embeddings.npy")
+INDEX_FILE = get_path("embedding_index.json")
+REPORT_FILE = get_path("embedding_report.json")
 
 # Default model - good balance of speed and quality
 DEFAULT_MODEL = 'all-MiniLM-L6-v2'

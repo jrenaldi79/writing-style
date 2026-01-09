@@ -25,10 +25,12 @@ from typing import Tuple, List, Dict, Optional
 from collections import Counter
 
 # Directories
-DATA_DIR = Path.home() / "Documents" / "my-writing-style"
-RAW_DIR = DATA_DIR / "raw_samples"
-FILTERED_DIR = DATA_DIR / "filtered_samples"
-REPORT_FILE = DATA_DIR / "filter_report.json"
+from config import get_data_dir, get_path
+
+DATA_DIR = get_data_dir()
+RAW_DIR = get_path("raw_samples")
+FILTERED_DIR = get_path("filtered_samples")
+REPORT_FILE = get_path("filter_report.json")
 
 # Quality thresholds
 MIN_BODY_LENGTH = 100  # characters

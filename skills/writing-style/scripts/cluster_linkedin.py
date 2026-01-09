@@ -17,10 +17,12 @@ from datetime import datetime
 from collections import Counter
 
 # Directories
-DATA_DIR = Path.home() / "Documents" / "my-writing-style"
-FILTERED_DIR = DATA_DIR / "filtered_samples"
-RAW_DIR = DATA_DIR / "raw_samples"
-OUTPUT_FILE = DATA_DIR / "linkedin_persona.json"
+from config import get_data_dir, get_path
+
+DATA_DIR = get_data_dir()
+FILTERED_DIR = get_path("filtered_samples")
+RAW_DIR = get_path("raw_samples")
+OUTPUT_FILE = get_path("linkedin_persona.json")
 
 def load_posts() -> list:
     """Load filtered posts."""

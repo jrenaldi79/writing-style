@@ -25,10 +25,12 @@ from collections import Counter
 import base64
 
 # Directories
-DATA_DIR = Path.home() / "Documents" / "my-writing-style"
-FILTERED_DIR = DATA_DIR / "filtered_samples"
-ENRICHED_DIR = DATA_DIR / "enriched_samples"
-REPORT_FILE = DATA_DIR / "enrichment_report.json"
+from config import get_data_dir, get_path
+
+DATA_DIR = get_data_dir()
+FILTERED_DIR = get_path("filtered_samples")
+ENRICHED_DIR = get_path("enriched_samples")
+REPORT_FILE = get_path("enrichment_report.json")
 
 # Your email domain (for internal detection)
 # Will be auto-detected from sender if not set

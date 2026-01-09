@@ -16,11 +16,13 @@ from pathlib import Path
 from datetime import datetime
 
 # Directories
-DATA_DIR = Path.home() / "Documents" / "my-writing-style"
-EMAIL_CLUSTERS_FILE = DATA_DIR / "clusters" / "email_clusters.json"
-LINKEDIN_PERSONA_FILE = DATA_DIR / "linkedin_persona.json"
-OUTPUT_DIR = DATA_DIR / "prompts"
-OUTPUT_FILE = OUTPUT_DIR / "writing_assistant.md"
+from config import get_data_dir, get_path
+
+DATA_DIR = get_data_dir()
+EMAIL_CLUSTERS_FILE = get_path("clusters", "email_clusters.json")
+LINKEDIN_PERSONA_FILE = get_path("linkedin_persona.json")
+OUTPUT_DIR = get_path("prompts")
+OUTPUT_FILE = get_path("prompts", "writing_assistant.md")
 
 DEFAULT_HEADER = """
 # MISSION

@@ -30,11 +30,13 @@ from typing import Dict, List, Optional, Tuple
 import sys
 
 # Directories
-DATA_DIR = Path.home() / "Documents" / "my-writing-style"
-VALIDATION_DIR = DATA_DIR / "validation_set"
-PROMPT_FILE = DATA_DIR / "prompts" / "writing_assistant.md"
-REPORT_FILE = DATA_DIR / "validation_report.json"
-ENRICHED_DIR = DATA_DIR / "enriched_samples"
+from config import get_data_dir, get_path
+
+DATA_DIR = get_data_dir()
+VALIDATION_DIR = get_path("validation_set")
+PROMPT_FILE = get_path("prompts", "writing_assistant.md")
+REPORT_FILE = get_path("validation_report.json")
+ENRICHED_DIR = get_path("enriched_samples")
 
 # Default settings
 DEFAULT_THRESHOLD = 0.70

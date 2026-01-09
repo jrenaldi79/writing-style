@@ -23,9 +23,11 @@ from pathlib import Path
 import shutil
 
 # Directories
-DATA_DIR = Path.home() / "Documents" / "my-writing-style"
-RAW_DIR = DATA_DIR / "raw_samples"
-FILTERED_DIR = DATA_DIR / "filtered_samples"
+from config import get_data_dir, get_path
+
+DATA_DIR = get_data_dir()
+RAW_DIR = get_path("raw_samples")
+FILTERED_DIR = get_path("filtered_samples")
 
 # Thresholds
 MIN_CHARS = 200  # Snippets are usually < 150 chars

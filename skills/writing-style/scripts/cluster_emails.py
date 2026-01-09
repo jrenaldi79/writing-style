@@ -23,11 +23,13 @@ from typing import Dict, List, Tuple, Optional
 import sys
 
 # Directories
-DATA_DIR = Path.home() / "Documents" / "my-writing-style"
-EMBEDDINGS_FILE = DATA_DIR / "embeddings.npy"
-INDEX_FILE = DATA_DIR / "embedding_index.json"
-CLUSTERS_FILE = DATA_DIR / "clusters.json"
-ENRICHED_DIR = DATA_DIR / "enriched_samples"
+from config import get_data_dir, get_path
+
+DATA_DIR = get_data_dir()
+EMBEDDINGS_FILE = get_path("embeddings.npy")
+INDEX_FILE = get_path("embedding_index.json")
+CLUSTERS_FILE = get_path("clusters.json")
+ENRICHED_DIR = get_path("enriched_samples")
 
 
 def check_dependencies():

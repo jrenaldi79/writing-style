@@ -22,11 +22,13 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 
-DATA_DIR = Path.home() / "Documents" / "my-writing-style"
-SAMPLES_DIR = DATA_DIR / "samples"
-RAW_SAMPLES_DIR = DATA_DIR / "raw_samples"
-PERSONA_FILE = DATA_DIR / "persona_registry.json"
-STATE_FILE = DATA_DIR / "state.json"
+from config import get_data_dir, get_path
+
+DATA_DIR = get_data_dir()
+SAMPLES_DIR = get_path("samples")
+RAW_SAMPLES_DIR = get_path("raw_samples")
+PERSONA_FILE = get_path("persona_registry.json")
+STATE_FILE = get_path("state.json")
 
 
 def load_json(path):

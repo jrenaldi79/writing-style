@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 
 # Add skill scripts to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "skill" / "scripts"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "skills" / "writing-style" / "scripts"))
 
 from test_fixtures import get_sample_email, create_filtered_sample, create_enriched_sample
 
@@ -171,12 +171,12 @@ class TestCalibration(unittest.TestCase):
     
     def test_calibration_file_exists(self):
         """Calibration file should exist."""
-        calibration_path = Path(__file__).parent.parent / "skill" / "references" / "calibration.md"
+        calibration_path = Path(__file__).parent.parent / "skills" / "writing-style" / "references" / "calibration.md"
         self.assertTrue(calibration_path.exists(), "calibration.md not found")
     
     def test_calibration_has_anchors(self):
         """Calibration file should have anchor examples."""
-        calibration_path = Path(__file__).parent.parent / "skill" / "references" / "calibration.md"
+        calibration_path = Path(__file__).parent.parent / "skills" / "writing-style" / "references" / "calibration.md"
         
         with open(calibration_path) as f:
             content = f.read()

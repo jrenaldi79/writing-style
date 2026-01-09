@@ -20,12 +20,14 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 # Directories
-DATA_DIR = Path.home() / "Documents" / "my-writing-style"
-CLUSTERS_FILE = DATA_DIR / "clusters.json"
-ENRICHED_DIR = DATA_DIR / "enriched_samples"
-RAW_DIR = DATA_DIR / "raw_samples"
-BATCHES_DIR = DATA_DIR / "batches"
-SAMPLES_DIR = DATA_DIR / "samples"
+from config import get_data_dir, get_path
+
+DATA_DIR = get_data_dir()
+CLUSTERS_FILE = get_path("clusters.json")
+ENRICHED_DIR = get_path("enriched_samples")
+RAW_DIR = get_path("raw_samples")
+BATCHES_DIR = get_path("batches")
+SAMPLES_DIR = get_path("samples")
 
 # Calibration reference path (in skill repo)
 SKILL_DIR = Path(__file__).parent.parent
