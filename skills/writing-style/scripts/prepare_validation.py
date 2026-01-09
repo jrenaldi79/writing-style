@@ -155,8 +155,15 @@ def analyze_tone_hints(reply_text: str) -> List[str]:
     if len(reply_text) > 500:
         hints.append('detailed')
 
-    # Contractions
-    if re.search(r"\b(don't|won't|can't|I'm|you're|we're|they're|it's)\b", reply_text):
+    # Contractions - normalize Unicode apostrophes and use comprehensive pattern
+    normalized_text = reply_text.replace('\u2019', "'").replace('\u2018', "'")
+    contraction_pattern = (
+        r"\b(i'm|i've|i'll|i'd|we're|we've|we'll|we'd|you're|you've|you'll|you'd|"
+        r"they're|they've|they'll|they'd|he's|she's|it's|that's|there's|here's|"
+        r"what's|who's|can't|won't|don't|doesn't|didn't|isn't|aren't|wasn't|"
+        r"weren't|haven't|hasn't|hadn't|couldn't|wouldn't|shouldn't)\b"
+    )
+    if re.search(contraction_pattern, normalized_text, re.IGNORECASE):
         hints.append('uses_contractions')
 
     return hints
