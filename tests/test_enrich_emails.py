@@ -59,6 +59,174 @@ class TestRecipientClassification(unittest.TestCase):
         self.assertEqual(result, "mixed")
 
 
+class TestHeaderFallback(unittest.TestCase):
+    """Test header extraction with different email formats - Issue 2.
+
+    The enrichment code expects Gmail API format with payload.headers[],
+    but actual data may have simplified format with direct attributes.
+    """
+
+    def test_get_header_from_payload_headers(self):
+        """Should extract header from payload.headers array (Gmail API format)."""
+        email = {
+            'payload': {
+                'headers': [
+                    {'name': 'From', 'value': 'sender@example.com'},
+                    {'name': 'To', 'value': 'recipient@example.com'},
+                    {'name': 'Subject', 'value': 'Test Subject'}
+                ]
+            }
+        }
+
+        result = enrich_emails.get_header(email, 'From')
+        self.assertEqual(result, 'sender@example.com')
+
+    def test_get_header_from_direct_attribute(self):
+        """Should extract header from direct attribute when payload.headers missing.
+
+        This is the bug fix test - current code returns '' for this case.
+        """
+        # Simplified email format (what fetch_emails.py actually produces)
+        email = {
+            'from': 'sender@example.com',
+            'to': 'recipient@example.com',
+            'subject': 'Test Subject',
+            'date': '2025-01-07T10:00:00Z'
+        }
+
+        result = enrich_emails.get_header(email, 'from')
+        self.assertEqual(result, 'sender@example.com',
+            "Should fall back to direct 'from' attribute")
+
+    def test_get_header_case_insensitive_direct(self):
+        """Should handle case variations for direct attributes."""
+        email = {
+            'From': 'sender@example.com',  # Capital F
+            'to': 'recipient@example.com',  # lowercase
+        }
+
+        # Should find 'From' even when asking for 'from'
+        result = enrich_emails.get_header(email, 'from')
+        self.assertIn('sender@example.com', result.lower() if result else '',
+            "Should handle case-insensitive lookup for direct attributes")
+
+    def test_get_header_prefers_payload_headers(self):
+        """Should prefer payload.headers over direct attributes when both exist."""
+        email = {
+            'from': 'direct@example.com',
+            'payload': {
+                'headers': [
+                    {'name': 'From', 'value': 'payload@example.com'}
+                ]
+            }
+        }
+
+        result = enrich_emails.get_header(email, 'From')
+        self.assertEqual(result, 'payload@example.com',
+            "payload.headers should take precedence over direct attributes")
+
+    def test_detect_user_domain_direct_attribute(self):
+        """Should detect user domain from direct 'from' attribute.
+
+        Bug: Current code returns '' because get_header can't find direct attrs.
+        """
+        email = {
+            'from': 'john@mycompany.com'
+        }
+
+        domain = enrich_emails.detect_user_domain(email)
+        self.assertEqual(domain, 'mycompany.com',
+            "Should extract domain from direct 'from' attribute")
+
+    def test_detect_user_domain_with_display_name(self):
+        """Should extract domain even with display name in from field."""
+        email = {
+            'from': 'John Doe <john@mycompany.com>'
+        }
+
+        domain = enrich_emails.detect_user_domain(email)
+        self.assertEqual(domain, 'mycompany.com')
+
+    def test_detect_thread_position_direct_subject_reply(self):
+        """Should detect reply from direct 'subject' attribute with Re: prefix."""
+        email = {
+            'subject': 'Re: Important Meeting'
+        }
+
+        position, depth = enrich_emails.detect_thread_position(email)
+        self.assertEqual(position, 'reply',
+            "Should detect 'reply' from Re: in direct subject attribute")
+
+    def test_detect_thread_position_direct_subject_forward(self):
+        """Should detect forward from direct 'subject' attribute with Fwd: prefix."""
+        email = {
+            'subject': 'Fwd: FYI - Check this out'
+        }
+
+        position, depth = enrich_emails.detect_thread_position(email)
+        self.assertEqual(position, 'forward',
+            "Should detect 'forward' from Fwd: in direct subject attribute")
+
+
+class TestEnrichEmailDirectAttributes(unittest.TestCase):
+    """Test enrich_email with simplified email format (no payload.headers)."""
+
+    def test_enrich_simplified_format_recipients(self):
+        """Should extract recipients from direct to/cc attributes."""
+        filtered_data = {
+            'id': 'test_simplified',
+            'original_data': {
+                'from': 'john@mycompany.com',
+                'to': 'sarah@client.com',
+                'cc': 'team@mycompany.com',
+                'subject': 'Project Update',
+                'snippet': 'Here is the update...'
+            }
+        }
+
+        enriched = enrich_emails.enrich_email(filtered_data, 'mycompany.com')
+
+        # Should have recipient count > 0 (2 recipients: to + cc)
+        self.assertGreater(enriched['enrichment']['recipient_count'], 0,
+            "Should count recipients from direct to/cc attributes")
+
+    def test_enrich_simplified_format_audience(self):
+        """Should classify audience correctly from direct attributes."""
+        filtered_data = {
+            'id': 'test_audience',
+            'original_data': {
+                'from': 'john@mycompany.com',
+                'to': 'sarah@client.com',  # external
+                'cc': 'team@mycompany.com',  # internal
+                'subject': 'Meeting',
+                'snippet': 'Let us meet...'
+            }
+        }
+
+        enriched = enrich_emails.enrich_email(filtered_data, 'mycompany.com')
+
+        # Mixed audience: one internal (cc), one external (to)
+        self.assertEqual(enriched['enrichment']['audience'], 'mixed',
+            "Should detect mixed audience from direct to/cc attributes")
+
+    def test_enrich_simplified_format_thread_position(self):
+        """Should detect thread position from direct subject attribute."""
+        filtered_data = {
+            'id': 'test_thread',
+            'original_data': {
+                'from': 'john@mycompany.com',
+                'to': 'team@mycompany.com',
+                'subject': 'Re: Project Update',
+                'snippet': 'Thanks for the update...'
+            }
+        }
+
+        enriched = enrich_emails.enrich_email(filtered_data, 'mycompany.com')
+
+        self.assertEqual(enriched['enrichment']['thread_position'], 'reply',
+            "Should detect reply from Re: in direct subject attribute")
+
+
 class TestThreadDetection(unittest.TestCase):
     """Test thread position detection."""
     

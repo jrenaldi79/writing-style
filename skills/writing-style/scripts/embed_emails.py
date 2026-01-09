@@ -183,8 +183,8 @@ def generate_embeddings(model_name: str = DEFAULT_MODEL) -> Dict:
         email_id = enriched_data.get('id', filepath.stem)
         text = prepare_text_for_embedding(enriched_data)
         
-        if len(text.strip()) < 20:
-            print(f"  ⚠ {email_id} → too short, skipping")
+        if len(text.strip()) < 10:
+            print(f"  ⚠ {email_id} → very short ({len(text.strip())} chars), skipping")
             continue
         
         texts.append(text)

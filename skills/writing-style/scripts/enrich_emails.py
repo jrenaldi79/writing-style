@@ -38,11 +38,32 @@ USER_DOMAIN = None
 
 
 def get_header(email_data: dict, header_name: str) -> str:
-    """Get a specific header value from email."""
+    """Get a specific header value from email.
+
+    Checks payload.headers array first (Gmail API full format),
+    then falls back to direct attributes (simplified format).
+    """
+    # Try payload.headers first (Gmail API format)
     headers = email_data.get('payload', {}).get('headers', [])
     for header in headers:
         if header.get('name', '').lower() == header_name.lower():
             return header.get('value', '')
+
+    # Fallback to direct attribute (simplified format)
+    # Check lowercase version first, then original case, then case-insensitive search
+    direct_value = email_data.get(header_name.lower())
+    if direct_value:
+        return direct_value
+    direct_value = email_data.get(header_name)
+    if direct_value:
+        return direct_value
+
+    # Case-insensitive search through all keys
+    header_lower = header_name.lower()
+    for key, value in email_data.items():
+        if key.lower() == header_lower and isinstance(value, str):
+            return value
+
     return ''
 
 

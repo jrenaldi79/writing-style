@@ -317,7 +317,7 @@ def run_clustering(algorithm: str = 'auto', k: Optional[int] = None,
         'algorithm': metadata['algorithm'],
         'n_emails': len(embeddings),
         'n_clusters': len([c for c in clusters if not c['is_noise']]),
-        'n_noise': len([c for c in clusters if c['is_noise']]),
+        'n_noise': sum(c['size'] for c in clusters if c['is_noise']),
         'silhouette_score': metadata.get('silhouette_score', 0),
         'parameters': {
             'k': metadata.get('k'),
@@ -397,6 +397,16 @@ def run_clustering(algorithm: str = 'auto', k: Optional[int] = None,
             'severity': 'info',
             'message': f"{noise_ratio:.0%} of emails are noise - moderate",
             'suggestion': "Some emails don't fit cleanly. This is often acceptable."
+        })
+
+    # Check for poor cluster quality (low silhouette score)
+    silhouette = result.get('silhouette_score', 0)
+    if silhouette < 0.15 and n_clusters > 1:
+        health_issues.append({
+            'type': 'low_silhouette',
+            'severity': 'warning',
+            'message': f"Silhouette score {silhouette:.2f} indicates weak cluster separation",
+            'suggestion': "Clusters may overlap significantly. Try adjusting parameters or using K-Means."
         })
 
     # Print health check results

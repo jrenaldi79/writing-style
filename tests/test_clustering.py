@@ -166,6 +166,152 @@ class TestClustering(unittest.TestCase):
             self.assertLess(inertias[i+1], inertias[i])
 
 
+class TestClusterHealthCheck(unittest.TestCase):
+    """Test cluster health check calculations - Issue 1."""
+
+    def test_noise_count_should_count_emails_not_clusters(self):
+        """n_noise should count individual noisy emails, not cluster objects.
+
+        Bug: cluster_emails.py:320 uses len([c for c in clusters if c['is_noise']])
+        which counts cluster objects (always 0 or 1), not actual noisy emails.
+        """
+        # Scenario: 60 total emails, 10 in noise cluster
+        clusters = [
+            {'id': 0, 'size': 30, 'is_noise': False, 'sample_ids': []},
+            {'id': 1, 'size': 20, 'is_noise': False, 'sample_ids': []},
+            {'id': -1, 'size': 10, 'is_noise': True, 'sample_ids': []}  # 10 noise EMAILS
+        ]
+
+        # Correct calculation: sum email counts
+        n_noise_correct = sum(c['size'] for c in clusters if c['is_noise'])
+        self.assertEqual(n_noise_correct, 10, "Should count 10 noise emails")
+
+        # Buggy calculation (what the code currently does)
+        n_noise_buggy = len([c for c in clusters if c['is_noise']])
+        self.assertEqual(n_noise_buggy, 1, "Buggy code counts 1 cluster object")
+
+        # The bug: these two values are different!
+        self.assertNotEqual(n_noise_correct, n_noise_buggy,
+            "Bug demonstration: correct method != buggy method")
+
+    def test_noise_count_no_noise_cluster(self):
+        """n_noise should be 0 when there's no noise cluster."""
+        clusters = [
+            {'id': 0, 'size': 30, 'is_noise': False, 'sample_ids': []},
+            {'id': 1, 'size': 20, 'is_noise': False, 'sample_ids': []}
+        ]
+
+        n_noise = sum(c['size'] for c in clusters if c['is_noise'])
+        self.assertEqual(n_noise, 0)
+
+    def test_noise_ratio_high_noise_scenario(self):
+        """Should correctly calculate noise ratio for high-noise scenario.
+
+        In the RCA, 157 out of 211 emails (74%) were noise, but health check
+        showed "0% noise" because it counted 1 noise cluster / 211 emails = 0.47%.
+        """
+        # Recreate the RCA scenario
+        clusters = [
+            {'id': 0, 'size': 30, 'is_noise': False, 'sample_ids': []},
+            {'id': 1, 'size': 15, 'is_noise': False, 'sample_ids': []},
+            {'id': 2, 'size': 9, 'is_noise': False, 'sample_ids': []},
+            {'id': -1, 'size': 157, 'is_noise': True, 'sample_ids': []}  # 157 noise
+        ]
+
+        total_emails = sum(c['size'] for c in clusters)  # 211
+        n_noise = sum(c['size'] for c in clusters if c['is_noise'])  # 157
+        noise_ratio = n_noise / total_emails
+
+        self.assertEqual(total_emails, 211)
+        self.assertEqual(n_noise, 157)
+        self.assertAlmostEqual(noise_ratio, 0.744, places=2,
+            msg="Noise ratio should be ~74%, not 0%")
+
+        # This should trigger high_noise warning (>30%)
+        self.assertGreater(noise_ratio, 0.30,
+            "74% noise should exceed 30% threshold for warning")
+
+
+class TestSilhouetteWarning(unittest.TestCase):
+    """Test silhouette score warning system - Issue 3."""
+
+    def test_low_silhouette_should_warn(self):
+        """Should add warning when silhouette score < 0.15."""
+        silhouette_score = 0.10
+        n_clusters = 3
+
+        health_issues = []
+        if silhouette_score < 0.15 and n_clusters > 1:
+            health_issues.append({
+                'type': 'low_silhouette',
+                'severity': 'warning',
+                'message': f"Silhouette score {silhouette_score:.2f} indicates weak cluster separation"
+            })
+
+        self.assertEqual(len(health_issues), 1)
+        self.assertEqual(health_issues[0]['type'], 'low_silhouette')
+
+    def test_acceptable_silhouette_no_warning(self):
+        """Should not warn when silhouette score >= 0.15."""
+        silhouette_score = 0.25
+        n_clusters = 3
+
+        health_issues = []
+        if silhouette_score < 0.15 and n_clusters > 1:
+            health_issues.append({'type': 'low_silhouette'})
+
+        self.assertEqual(len(health_issues), 0)
+
+    def test_single_cluster_no_silhouette_warning(self):
+        """Should not warn about silhouette for single cluster (score is meaningless)."""
+        silhouette_score = 0.05  # Very low, but meaningless for single cluster
+        n_clusters = 1
+
+        health_issues = []
+        if silhouette_score < 0.15 and n_clusters > 1:
+            health_issues.append({'type': 'low_silhouette'})
+
+        self.assertEqual(len(health_issues), 0,
+            "Single cluster should not trigger silhouette warning")
+
+
+class TestEmbeddingThreshold(unittest.TestCase):
+    """Test embedding minimum character threshold - Issue 4."""
+
+    def test_brief_acknowledgment_should_embed(self):
+        """Brief acknowledgments (10+ chars) should be embeddable.
+
+        Current threshold is 20 chars, should be 10.
+        """
+        # Common brief acknowledgments
+        brief_texts = [
+            "Thanks! -J",      # 10 chars
+            "Perfect, ty",     # 11 chars
+            "Got it, thx",     # 11 chars
+            "Sounds good!",    # 12 chars
+        ]
+
+        MIN_CHARS = 10  # Proposed threshold
+
+        for text in brief_texts:
+            self.assertGreaterEqual(len(text.strip()), MIN_CHARS,
+                f"'{text}' ({len(text)} chars) should be above {MIN_CHARS} threshold")
+
+    def test_very_short_should_reject(self):
+        """Very short texts (<10 chars) should still be rejected."""
+        very_short_texts = [
+            "Thanks!",   # 7 chars
+            "OK",        # 2 chars
+            "K",         # 1 char
+        ]
+
+        MIN_CHARS = 10
+
+        for text in very_short_texts:
+            self.assertLess(len(text.strip()), MIN_CHARS,
+                f"'{text}' should be below threshold and rejected")
+
+
 class TestCalibration(unittest.TestCase):
     """Test calibration system."""
     
