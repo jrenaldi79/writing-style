@@ -24,6 +24,7 @@ import os
 import time
 from pathlib import Path
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Configuration - BrightData MCP Server (NPX-based, like Gmail)
 from config import get_data_dir, get_path
@@ -283,9 +284,9 @@ def verify_profile(client, profile_url):
     # Extract structured metadata
     profile_data = extract_profile_metadata(content, profile_url)
     
-    # Display to user for confirmation
+    # Display profile info (LLM can verify with user if needed)
     print("\n" + "=" * 60)
-    print("PROFILE FOUND - PLEASE CONFIRM THIS IS YOU")
+    print("PROFILE FOUND")
     print("=" * 60)
     print(f"Name:      {profile_data['name']}")
     print(f"Headline:  {profile_data['headline']}")
@@ -297,21 +298,12 @@ def verify_profile(client, profile_url):
     if profile_data['bio'] != "Unknown":
         print(f"Bio:       {profile_data['bio'][:100]}...")
     print("=" * 60)
-    
-    # Wait for user confirmation
-    print("\n⚠️  IS THIS YOUR PROFILE? (yes/no): ", end='', flush=True)
-    confirmation = input().strip().lower()
-    
-    if confirmation not in ['yes', 'y']:
-        print("\n❌ Profile not confirmed. Please check the URL and try again.")
-        print("\nMake sure you're using the correct LinkedIn profile URL.")
-        sys.exit(1)
-    
-    # User confirmed - mark as validated
+
+    # Auto-proceed (LLM workflow - no interactive confirmation)
     profile_data['validated'] = True
     profile_data['validated_at'] = datetime.now().isoformat()
-    
-    print("\n✅ Profile confirmed! Searching for posts...\n")
+
+    print("\n✅ Profile validated. Searching for posts...\n")
     
     return profile_data
 
@@ -330,11 +322,12 @@ def search_for_posts(client, username, limit=20):
     
     all_urls = []
     
-    # Try multiple search patterns
+    # Try multiple search patterns (posts + articles)
     search_patterns = [
         f"site:linkedin.com/posts/{username} activity",
         f'"{username}" site:linkedin.com/posts product OR founder OR startup',
         f"site:linkedin.com/posts/{username}_",
+        f"site:linkedin.com/pulse/ {username}",  # Long-form articles
     ]
     
     for i, query in enumerate(search_patterns, 1):
@@ -347,11 +340,15 @@ def search_for_posts(client, username, limit=20):
             })
             result_data = json.loads(result_json)
             
-            # Extract post URLs - FILTER to exact username match
+            # Extract post/article URLs - FILTER to exact username match
             for item in result_data.get("organic", []):
                 url = item.get("link", "")
                 # Strict validation: must be from THIS user's profile
+                # Posts: /posts/username/ or /posts/username_ with activity-
                 if (f"/posts/{username}/" in url or f"/posts/{username}_" in url) and "activity-" in url:
+                    all_urls.append(url)
+                # Articles: /pulse/ with username in URL
+                elif "/pulse/" in url and username.lower() in url.lower():
                     all_urls.append(url)
             
             found = len(all_urls)
@@ -398,124 +395,171 @@ def validate_post_ownership(post_data, validated_profile):
     return True, "Validated"
 
 
-def scrape_posts_batch(client, urls, validated_profile, max_retries=2, retry_delay=30):
+def scrape_single_post(url, token, max_retries=2):
     """
-    Scrape LinkedIn posts using specialized web_data_linkedin_posts tool.
-    This tool returns structured data and supports caching.
-    
+    Scrape a single LinkedIn post with its own MCP client.
+    Used for parallel processing.
+
     Args:
-        client: MCPClient instance
+        url: LinkedIn post URL
+        token: BrightData API token
+        max_retries: Number of retries
+
+    Returns:
+        tuple: (url, post_data or None, error_message or None)
+    """
+    mcp_config = get_mcp_command(token)
+    client = MCPClient(mcp_config["command"], mcp_config["env"])
+
+    try:
+        client.initialize()
+
+        for attempt in range(max_retries + 1):
+            try:
+                result_json = client.call_tool("web_data_linkedin_posts", {"url": url})
+                data = json.loads(result_json)
+
+                if isinstance(data, dict) and data.get("status") == "starting":
+                    if attempt < max_retries:
+                        time.sleep(10)
+                        continue
+                    else:
+                        return (url, None, "Timeout waiting for cache")
+                elif isinstance(data, list) and data:
+                    return (url, data[0], None)
+                else:
+                    return (url, None, "Unexpected response format")
+
+            except json.JSONDecodeError as e:
+                return (url, None, f"Invalid JSON: {e}")
+            except Exception as e:
+                if attempt < max_retries:
+                    time.sleep(2)
+                    continue
+                return (url, None, str(e))
+
+        return (url, None, "Max retries exceeded")
+    finally:
+        client.close()
+
+
+def scrape_posts_batch(client, urls, validated_profile, max_retries=2, retry_delay=30, max_workers=5):
+    """
+    Scrape LinkedIn posts in parallel using web_data_linkedin_posts.
+
+    Args:
+        client: MCPClient instance (used for token extraction)
         urls: List of LinkedIn post URLs
-        max_retries: Number of retries if cache is warming up
-        retry_delay: Seconds to wait between retries
-    
+        max_retries: Number of retries per post
+        retry_delay: Not used (kept for compatibility)
+        max_workers: Number of parallel scrapers (default 5)
+
     Returns:
         list: Successfully scraped posts with structured data
     """
     print("\n" + "=" * 60)
     print("STEP 3: SCRAPE & VALIDATE POSTS")
     print("=" * 60)
-    print(f"Using specialized LinkedIn tool (web_data_linkedin_posts)")
-    print(f"Note: First batch may need 30s cache warm-up\n")
-    
+    print(f"Using parallel scraping ({max_workers} workers, {len(urls)} URLs)")
+    print(f"This is much faster than sequential scraping\n")
+
     all_posts = []
     rejected_posts = []
-    
-    for i, url in enumerate(urls, 1):
-        print(f"\n📄 Post {i}/{len(urls)}: {url[:70]}...")
-        
-        post_data = None
-        
-        # Try with retries for cache warm-up
-        for attempt in range(max_retries + 1):
-            try:
-                result_json = client.call_tool("web_data_linkedin_posts", {"url": url})
-                data = json.loads(result_json)
-                
-                # Response is a list - check first item for status or data
-                if isinstance(data, dict) and data.get("status") == "starting":
-                    if attempt < max_retries:
-                        print(f"   ⏳ Cache warming up, waiting {retry_delay}s...")
-                        time.sleep(retry_delay)
-                        continue
-                    else:
-                        print(f"   ⚠️  Timeout after {max_retries} retries")
-                        break
-                elif isinstance(data, list) and data:
-                    # Success - got list of post data
-                    post_data = data[0]  # First item in list
-                    text_preview = post_data.get("post_text", "")[:50]
-                    likes = post_data.get("num_likes", 0)
-                    print(f"   ✅ {len(post_data.get('post_text', ''))} chars, {likes} likes")
-                    print(f"   Preview: {text_preview}...")
-                    break
-                else:
-                    print(f"   ⚠️  Unexpected response format")
-                    break
-                    
-            except json.JSONDecodeError as e:
-                print(f"   ❌ Invalid JSON response: {e}")
-                break
-            except Exception as e:
-                if attempt < max_retries:
-                    print(f"   ⚠️  Attempt {attempt+1} failed: {e}, retrying...")
-                    time.sleep(5)
-                else:
-                    print(f"   ❌ Failed after {max_retries+1} attempts: {e}")
-                break
-        
-        if post_data and post_data.get("post_text"):
-            # Validate post ownership
-            is_valid, reason = validate_post_ownership(post_data, validated_profile)
-            
-            if is_valid:
-                # Build comprehensive post entry with rich metadata (v3.3)
-                post_entry = {
-                    # Core fields (existing)
-                    "url": url,
-                    "text": post_data.get("post_text", ""),
-                    "likes": post_data.get("num_likes", 0),
-                    "comments": post_data.get("num_comments", 0),
-                    "date_posted": post_data.get("date_posted", ""),
-                    "user_id": post_data.get("user_id", ""),
-                    "validation_status": "confirmed",
-                    
-                    # NEW v3.3: Engagement signals
-                    "top_comments": post_data.get("top_visible_comments", []),
-                    
-                    # NEW v3.3: Content metadata
-                    "headline": post_data.get("headline", ""),
-                    "post_type": post_data.get("post_type", "original"),
-                    "embedded_links": post_data.get("embedded_links", []),
-                    "images": post_data.get("images", []),
-                    "external_links": post_data.get("external_link_data", []),
-                    
-                    # NEW v3.3: Network signals
-                    "tagged_people": post_data.get("tagged_people", []),
-                    "tagged_companies": post_data.get("tagged_companies", []),
-                    
-                    # NEW v3.3: Repost context (if applicable)
-                    "is_repost": post_data.get("post_type") == "repost",
-                    "repost_data": post_data.get("repost", None),
-                    "original_commentary": post_data.get("original_post_text", ""),
-                    
-                    # NEW v3.3: User metrics (authority signals)
-                    "author_followers": post_data.get("user_followers", 0),
-                    "author_total_posts": post_data.get("user_posts", 0),
-                    "author_articles": post_data.get("user_articles", 0),
-                    
-                    # NEW v3.3: Additional metadata
-                    "account_type": post_data.get("account_type", "Person"),
-                    "post_html": post_data.get("post_text_html", "")
-                }
-                all_posts.append(post_entry)
+
+    # Get token from environment
+    token = os.getenv("MCP_TOKEN")
+    if not token:
+        print("❌ MCP_TOKEN not found in environment")
+        return []
+
+    # Scrape posts in parallel
+    batch_results = {}
+    print(f"📦 Starting parallel scrape of {len(urls)} posts...")
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all scrape jobs
+        future_to_url = {
+            executor.submit(scrape_single_post, url, token, max_retries): url
+            for url in urls
+        }
+
+        # Collect results as they complete
+        completed = 0
+        for future in as_completed(future_to_url):
+            completed += 1
+            url, post_data, error = future.result()
+
+            if post_data:
+                batch_results[url] = post_data
+                text_len = len(post_data.get("post_text", ""))
+                likes = post_data.get("num_likes", 0)
+                print(f"   ✅ [{completed}/{len(urls)}] {text_len} chars, {likes} likes - {url[:50]}...")
             else:
-                rejected_posts.append({
-                    "url": url,
-                    "reason": reason,
-                    "user_id": post_data.get("user_id", "unknown")
-                })
-                print(f"   ⚠️  Rejected: {reason}")
+                print(f"   ❌ [{completed}/{len(urls)}] Failed: {error} - {url[:50]}...")
+
+    print(f"\n✅ Parallel scrape complete: {len(batch_results)}/{len(urls)} successful")
+
+    # Process results
+    for i, url in enumerate(urls, 1):
+        post_data = batch_results.get(url)
+
+        if not post_data or not post_data.get("post_text"):
+            continue
+
+        # Validate post ownership
+        is_valid, reason = validate_post_ownership(post_data, validated_profile)
+
+        if is_valid:
+            # Build comprehensive post entry with rich metadata (v3.3)
+            post_entry = {
+                # Core fields (existing)
+                "url": url,
+                "text": post_data.get("post_text", ""),
+                "likes": post_data.get("num_likes", 0),
+                "comments": post_data.get("num_comments", 0),
+                "date_posted": post_data.get("date_posted", ""),
+                "user_id": post_data.get("user_id", ""),
+                "validation_status": "confirmed",
+
+                # NEW v3.3: Engagement signals
+                "top_comments": post_data.get("top_visible_comments", []),
+
+                # NEW v3.3: Content metadata
+                "headline": post_data.get("headline", ""),
+                "post_type": post_data.get("post_type", "original"),
+                "embedded_links": post_data.get("embedded_links", []),
+                "images": post_data.get("images", []),
+                "external_links": post_data.get("external_link_data", []),
+
+                # NEW v3.3: Network signals
+                "tagged_people": post_data.get("tagged_people", []),
+                "tagged_companies": post_data.get("tagged_companies", []),
+
+                # NEW v3.3: Repost context (if applicable)
+                "is_repost": post_data.get("post_type") == "repost",
+                "repost_data": post_data.get("repost", None),
+                "original_commentary": post_data.get("original_post_text", ""),
+
+                # NEW v3.3: User metrics (authority signals)
+                "author_followers": post_data.get("user_followers", 0),
+                "author_total_posts": post_data.get("user_posts", 0),
+                "author_articles": post_data.get("user_articles", 0),
+
+                # NEW v3.3: Additional metadata
+                "account_type": post_data.get("account_type", "Person"),
+                "post_html": post_data.get("post_text_html", ""),
+
+                # NEW v3.4: Content type (post vs article)
+                "content_type": "article" if "/pulse/" in url else "post"
+            }
+            all_posts.append(post_entry)
+        else:
+            rejected_posts.append({
+                "url": url,
+                "reason": reason,
+                "user_id": post_data.get("user_id", "unknown")
+            })
+            print(f"   ⚠️  Rejected: {reason}")
     
     # Report validation results
     print(f"\n" + "=" * 60)

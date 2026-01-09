@@ -30,6 +30,7 @@
 │       │   ├── analysis_schema.md
 │       │   ├── batch_schema.md
 │       │   ├── calibration.md
+│       │   ├── linkedin_persona_schema_v2.md
 │       │   └── output_template.md
 │       └── scripts/            # Core Python logic
 │           ├── analysis_utils.py
@@ -46,8 +47,7 @@
 │           ├── ingest.py
 │           ├── prepare_batch.py
 │           ├── state_manager.py
-│           ├── style_manager.py
-│           └── validate.py
+│           └── style_manager.py
 └── tests/                      # Validation suite
     ├── README.md
     ├── run_tests.py
@@ -91,7 +91,7 @@ venv/bin/python3 cluster_linkedin.py
 ### 3. Generation & Testing
 ```bash
 # Final synthesis
-venv/bin/python3 generate_system_prompt.py && venv/bin/python3 validate.py
+venv/bin/python3 generate_system_prompt.py
 # Testing
 cd tests && ../venv/bin/python3 run_tests.py
 ```

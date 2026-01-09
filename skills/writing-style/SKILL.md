@@ -205,6 +205,10 @@ python3 ingest.py batches/batch_002.json
 
 The LinkedIn pipeline captures **20+ fields per post** for rich persona development:
 
+#### 🆕 Content Types Supported (v3.3)
+- **Short-form posts** (`/posts/`): Regular LinkedIn updates
+- **Long-form articles** (`/pulse/`): Blog-style articles you've published
+
 #### Core Content
 - **Text**: Full post content (your actual words)
 - **Headline**: Opening hook/summary
@@ -222,7 +226,11 @@ The LinkedIn pipeline captures **20+ fields per post** for rich persona developm
   - **Identifies:** Content gaps (questions people ask)
   - **Example:** "One of the absolute best founders, mentors..." ← Authority signal
 
-**Use Case:** Filter to posts with 50+ likes or 5+ comments for strongest voice
+**Engagement-Weighted Analysis:** Posts with higher engagement influence tone vectors more heavily using log-scale weighting. This prevents viral posts from dominating while still prioritizing what resonates with your audience.
+
+**Best Example Selection:** The few-shot example in the persona is automatically selected by highest engagement (likes), with length as tiebreaker for equal engagement.
+
+**Use Case:** Persona automatically emphasizes your strongest voice patterns
 
 #### 🆕 Network Context (v3.3)
 **Why this matters:** Shows collaboration patterns and relationship style
@@ -269,11 +277,13 @@ When you share others' content:
 - Missing authority context
 
 **After v3.3 (20+ fields):**
-- ✅ **Voice Validation**: High-engagement = strong voice
+- ✅ **Voice Validation**: High-engagement posts automatically weighted higher
 - ✅ **Content Balance**: Know original vs curated ratio
 - ✅ **Editorial Voice**: How you frame others' work
 - ✅ **Network Patterns**: Collaboration style
 - ✅ **Authority Context**: Platform engagement level
+- ✅ **Article Support**: Long-form `/pulse/` articles included alongside posts
+- ✅ **Engagement Weighting**: Log-scale weighting prevents viral posts from dominating
 
 **Example Insight:**
 > "70% reposts with thoughtful commentary. Frequently tags startup founders. Top posts average 80+ likes. Authority signals in comments: 'best mentor', 'thought leader'."
@@ -299,10 +309,11 @@ python3 cluster_linkedin.py
 
 **How it works:**
 1. **Profile Verification:** Scrapes profile to verify identity (name, headline, company)
-2. **Smart Search:** Uses disambiguating terms to find correct person's posts
-3. **Batch Scraping:** Fetches all posts in one operation
-4. **Validation:** Filters out posts from wrong people
-5. **State Tracking:** Saves progress for resume/debugging
+2. **Smart Search:** Uses disambiguating terms to find correct person's posts AND articles
+3. **Parallel Scraping:** Fetches posts in parallel (5 concurrent) for faster processing
+4. **Content Types:** Captures both short-form posts (`/posts/`) and long-form articles (`/pulse/`)
+5. **Validation:** Filters out posts from wrong people
+6. **State Tracking:** Saves progress for resume/debugging
 
 **Requirements:**
 - BrightData API token in `MCP_TOKEN` environment variable
@@ -371,7 +382,83 @@ This prevents fetching posts from other people with the same username or similar
 
 **Note:** LinkedIn creates ONE persona (not multiple) for brand consistency.
 
-**Next:** Stop here. Start new chat for Session 4 (Generation).
+**Next:** Continue to Session 3b (optional) or Session 4 (Generation).
+
+---
+
+### Session 3b: LLM-Assisted Refinement (Optional)
+
+**Purpose:** Complete semantic analysis fields that require LLM understanding. This enhances the v2 persona with guardrails, negative examples, and detailed annotations.
+
+**Prerequisites:** Session 3 complete (`linkedin_persona.json` exists with v2 schema)
+
+**When to use:**
+- You want richer guardrails (behavioral "never do" rules)
+- You want negative examples (anti-patterns for the voice)
+- You want annotations explaining why each example works
+
+#### Step 1: Export Posts for Analysis
+
+```bash
+cd ~/Documents/my-writing-style
+
+# Export all posts + current persona to a single markdown file
+python3 prepare_llm_analysis.py
+
+# Output: llm_analysis_input.md
+```
+
+The generated file contains:
+- Analysis instructions (what fields to complete)
+- Current persona JSON (already extracted patterns)
+- All filtered posts with engagement data and comments
+
+#### Step 2: LLM Analysis
+
+1. Open `llm_analysis_input.md` in your preferred LLM (Claude, GPT-4, etc.)
+2. The file includes complete instructions - just copy/paste the whole thing
+3. LLM returns a JSON object with completed fields
+
+**Fields the LLM completes:**
+- `guardrails.never_do` - Behavioral rules ("never start with...")
+- `guardrails.off_limits_topics` - Topics to avoid
+- `voice.signature_phrases` - Unique recurring phrases
+- `example_bank.positive` - Category, goal, audience, what_makes_it_work
+- `example_bank.negative` - Anti-pattern examples with explanations
+
+#### Step 3: Merge Results
+
+```bash
+# Save LLM output to a file
+# (copy the JSON block from LLM response into llm_output.json)
+
+# Merge into persona
+python3 merge_llm_analysis.py llm_output.json
+
+# Verify merged result
+cat linkedin_persona.json | python3 -m json.tool | head -50
+```
+
+**Merge behavior:**
+- Only fills empty/placeholder fields (won't overwrite existing values)
+- Uses index matching for positive example annotations
+- Validates structure before saving
+- Prints summary of what changed
+
+#### Dry Run Mode
+
+Preview changes without modifying the file:
+
+```bash
+python3 merge_llm_analysis.py --dry-run llm_output.json
+```
+
+**Output:**
+- Enhanced `linkedin_persona.json` with complete v2 schema
+
+**See also:** `references/llm_analysis_guide.md` for detailed LLM instructions
+
+**Next:** Proceed to Session 4 (Generation).
 
 ---
 
@@ -390,14 +477,32 @@ cat state.json
 # 2. Generate final prompt
 # Combines: persona_registry.json + linkedin_persona.json (if exists)
 python3 generate_system_prompt.py
-
-# 3. (Optional) Validate output
-python3 validate.py
 ```
 
 **Output:**
 - `prompts/writing_assistant.md` - **FINAL ARTIFACT**
-- Copy this into ChatGPT, Claude, or any AI tool
+
+### Inline Validation (Recommended)
+
+After generating the prompt, validate it interactively:
+
+1. **Generate test samples** - Create 2-3 sample emails using the prompt:
+   - Formal email to an executive
+   - Casual reply to a teammate
+   - Group announcement or update
+
+2. **Present to user** - Show the generated samples and ask:
+   > "Here's how the prompt would write in these scenarios. Does this sound like you?"
+
+3. **Collect feedback** - User identifies what feels off:
+   > "The casual one is too stiff - I use more exclamation points"
+   > "The formal one is good but I never say 'Dear'"
+
+4. **Refine the prompt** - Update `writing_assistant.md` based on feedback
+
+5. **Iterate** - Generate new samples until user approves
+
+**Why this works:** You are the ground truth for "does this sound like me" - no embedding score can match your judgment.
 
 **Done!** You now have a personalized writing assistant.
 
@@ -418,7 +523,6 @@ python3 validate.py
 │   │   │   ├── cluster_emails.py         # Mathematical clustering
 │   │   │   ├── prepare_batch.py          # Format for analysis
 │   │   │   ├── ingest.py                 # Save analysis results
-│   │   │   ├── validate.py               # Quality validation
 │   │   │   ├── fetch_linkedin_mcp.py     # LinkedIn automated fetch
 │   │   │   ├── filter_linkedin.py        # LinkedIn filtering
 │   │   │   ├── cluster_linkedin.py       # LinkedIn unification
@@ -498,31 +602,115 @@ python3 validate.py
 }
 ```
 
-### LinkedIn Persona Schema (linkedin_persona.json)
+### LinkedIn Persona Schema v2.0 (linkedin_persona.json)
+
+**V2 Schema Features:**
+- **Separated Voice vs Content:** Voice patterns (HOW you write) distinct from topics
+- **Guardrails:** Explicit "never do" rules to prevent LinkedIn cringe drift
+- **Variation Controls:** Ranges prevent robotic sameness
+- **Example Bank:** Positive examples with usage guidance + placeholder for negative examples
+
 ```json
 {
-  "source": "linkedin",
-  "persona_count": 1,
-  "persona": {
-    "name": "Professional LinkedIn Voice",
-    "post_count": 47,
-    "consistency_score": 0.87,
-    "characteristics": {
-      "avg_post_length": 285,
-      "uses_emojis": true,
-      "emoji_types": ["🎯", "🍌", "🤯"],
-      "technical_content_ratio": 0.65,
-      "top_hashtags": ["#ai", "#agents", "#product"]
+  "schema_version": "2.0",
+  "generated_at": "2026-01-08T21:26:21Z",
+  "sample_size": 5,
+  "confidence": 0.6,
+
+  "voice": {
+    "tone_vectors": {
+      "formality": 7,
+      "warmth": 5,
+      "authority": 6,
+      "directness": 7
     },
-    "tone_profile": {
-      "formality": 6,
-      "warmth": 7,
-      "technical_depth": 8,
-      "humor": 6
+    "linguistic_patterns": {
+      "sentence_length_avg_words": 16.3,
+      "short_punchy_ratio": 0.30,
+      "uses_contractions": true,
+      "uses_em_dash": false,
+      "uses_parentheticals": true,
+      "exclamations_per_post": 0.6,
+      "questions_per_post": 0.2
+    },
+    "emoji_profile": {
+      "signature_emojis": ["⚽", "🤣", "🍌", "🤯"],
+      "placement": "beginning",
+      "per_post_range": [0, 4]
+    },
+    "enthusiasm_level": 6
+  },
+
+  "guardrails": {
+    "never_do": [],
+    "forbidden_phrases": ["synergy", "leverage", "deep dive", "game-changer"],
+    "off_limits_topics": [],
+    "compliance": {
+      "no_confidential_info": true,
+      "no_unverified_claims": true
     }
+  },
+
+  "platform_rules": {
+    "formatting": {
+      "line_break_frequency": "low",
+      "single_sentence_paragraphs": false,
+      "uses_bullets": false,
+      "uses_hashtags": true,
+      "hashtags_count_range": [2, 2],
+      "hashtag_placement": "inline"
+    },
+    "hooks": {
+      "primary_style": "observation",
+      "allowed_styles": ["call_to_action", "observation"]
+    },
+    "closings": {
+      "primary_style": "invitation",
+      "engagement_ask_frequency": 0.6,
+      "link_placement": "end"
+    },
+    "length": {
+      "target_chars": 492,
+      "min_chars": 374,
+      "max_chars": 780
+    }
+  },
+
+  "variation_controls": {
+    "emoji_per_post_range": [0, 3],
+    "question_sentence_ratio_range": [0.0, 0.2],
+    "hook_style_distribution": {"observation": 1.0}
+  },
+
+  "example_bank": {
+    "usage_guidance": {
+      "instruction": "Match rhythm, tone, and structural patterns. Adapt to new topics.",
+      "what_to_match": ["Sentence length", "Hook style", "CTA pattern", "Emoji placement"],
+      "what_to_adapt": ["Topic", "Names/products", "CTA details", "Links"],
+      "warning": "Do NOT copy examples verbatim."
+    },
+    "positive": [
+      {
+        "engagement": {"likes": 129, "comments": 3},
+        "text": "I know there's a lot of super talented folks...",
+        "category": "",
+        "goal": "",
+        "audience": "",
+        "what_makes_it_work": []
+      }
+    ],
+    "negative": []
   }
 }
 ```
+
+**Confidence Scoring:**
+- `< 0.5` - Insufficient data, use defaults
+- `0.5-0.7` - Reasonable patterns, some inference
+- `0.7-0.9` - Strong patterns, high reliability
+- `> 0.9` - Very high confidence (20+ quality posts)
+
+**See full schema specification:** `references/linkedin_persona_schema_v2.md`
 
 ### State Management Schema (state.json)
 ```json
@@ -563,7 +751,6 @@ python3 validate.py
 | `cluster_emails.py` | Math clustering | embeddings.npy | clusters.json |
 | `prepare_batch.py` | Format for analysis | clusters.json | batches/*.json |
 | `ingest.py` | Save persona | batches/*.json | persona_registry.json |
-| `validate.py` | Test quality | persona_registry.json | validation_report.json |
 
 ### LinkedIn Scripts
 
@@ -571,7 +758,9 @@ python3 validate.py
 |--------|---------|-------|--------|
 | `fetch_linkedin_mcp.py` | Automated fetch with verification | Full profile URL | linkedin_data/*.json |
 | `filter_linkedin.py` | Quality gate | linkedin_data/ | filtered/ |
-| `cluster_linkedin.py` | Unify voice | filtered/ | linkedin_persona.json |
+| `cluster_linkedin.py` | Unify voice (v2 schema) | filtered/ | linkedin_persona.json |
+| `prepare_llm_analysis.py` | Export for LLM analysis | filtered/ + persona | llm_analysis_input.md |
+| `merge_llm_analysis.py` | Merge LLM output | llm_output.json | linkedin_persona.json |
 
 ### Utility Scripts
 
@@ -591,6 +780,7 @@ python3 validate.py
 | `batch_schema.md` | Analysis format specification |
 | `analysis_schema.md` | Persona output schema |
 | `output_template.md` | Final prompt template |
+| `linkedin_persona_schema_v2.md` | Advanced LinkedIn persona schema with guardrails, variation controls, and negative examples |
 
 ---
 
@@ -677,13 +867,13 @@ cp /path/from/above/*.py ~/Documents/my-writing-style/
 3. **Enriches** with metadata (recipient, context, structure)
 4. **Clusters** mathematically (discovers natural groupings)
 5. **Analyzes** with calibrated scoring (1-10 tone vectors)
-6. **Validates** against holdout set (proves accuracy)
+6. **Validates** interactively with user feedback
 7. **Generates** final prompt (copy-paste ready)
 
 ### What Makes It Different
 
 - ✅ **Mathematical:** Not vibes - actual clustering algorithms
-- ✅ **Validated:** Tests itself against held-out samples
+- ✅ **Validated:** Interactive user feedback loop
 - ✅ **Context-Aware:** Email personas adapt to recipient
 - ✅ **Brand-Consistent:** LinkedIn maintains unified voice
 - ✅ **State-Managed:** Resume anytime without data loss
@@ -695,4 +885,4 @@ A system prompt that makes any AI write **exactly like you**, with:
 - Context-sensitive tone adaptation (emails)
 - Consistent professional voice (LinkedIn)
 - Your actual patterns, not generic templates
-- Proven accuracy via validation loop
+- User-validated accuracy via feedback loop

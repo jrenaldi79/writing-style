@@ -82,15 +82,17 @@ def main():
                 data = json.load(f)
                 
             result, reason = check_quality(data)
-            likes = data.get('engagement', {}).get('likes', 0)
-            
+            likes = data.get('likes', 0)
+            # Use url as identifier (id field may not exist)
+            post_id = data.get('id', data.get('url', file_path.stem)[-50:])
+
             if result:
-                print(f"✅ KEEP  {data['id']} ({len(data['text'])} chars, {likes} likes)")
+                print(f"✅ KEEP  {post_id} ({len(data['text'])} chars, {likes} likes)")
                 passed += 1
                 if not args.dry_run:
                     shutil.copy2(file_path, FILTERED_DIR / file_path.name)
             else:
-                print(f"❌ DROP  {data['id']}: {reason}")
+                print(f"❌ DROP  {post_id}: {reason}")
                 rejected += 1
                 
         except Exception as e:

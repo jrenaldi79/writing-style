@@ -1,5 +1,39 @@
 # Changelog
 
+## [3.4.0] - 2026-01-08
+
+### Replaced Script-Based Validation with Inline User Feedback
+
+**Problem:**
+- `validate.py` used embedding similarity to score generated vs original emails
+- Required external LLM API calls (Anthropic/OpenAI) - cost ~28,000 tokens per run
+- Added dependencies (sentence-transformers, numpy)
+- Embedding similarity measures semantic similarity, not style similarity
+- A formal and casual email with the same meaning would score high despite style mismatch
+
+**Solution:**
+- Removed `validate.py` entirely
+- Added inline validation workflow to Session 4 in SKILL.md
+- LLM generates 2-3 test emails, presents to user for feedback
+- User identifies style mismatches ("too stiff", "I never say Dear")
+- LLM refines prompt based on feedback, iterates until approved
+
+**Benefits:**
+- User is the ground truth for "does this sound like me"
+- ~3x fewer tokens (9,500 vs 28,500)
+- Zero extra dependencies or API keys
+- Measures actual style match, not semantic similarity
+- Interactive refinement vs binary pass/fail
+
+### Removed
+- `skills/writing-style/scripts/validate.py` (549 lines)
+
+### Changed
+- `SKILL.md`: Session 4 now includes inline validation workflow
+- `claude.md` / `agents.md`: Removed validate.py from directory structure and commands
+
+---
+
 ## [3.1.0] - 2026-01-07
 
 ### Virtual Environment & Cross-Platform Fix
