@@ -116,3 +116,79 @@ cd tests && ../venv/bin/python3 run_tests.py
 - **Paths:** Always use OS-agnostic `pathlib`.
 - **Validation:** User-interactive verification required for profile data.
 - **Privacy:** Intermediate data remains local; only patterns are saved to personas.
+
+---
+
+## 🚨 Mandatory TDD Process
+
+**Every significant feature or script change MUST follow Test-Driven Development.**
+
+### TDD Cycle
+
+1. **Red Phase** (REQUIRED FIRST STEP):
+   - Write failing tests in `tests/` defining expected behavior
+   - Run tests to confirm failure: `venv/bin/python3 tests/run_tests.py`
+   - This validates that your test actually tests something
+
+2. **Green Phase**:
+   - Implement simplest code to make tests pass
+   - Focus on making it work, not making it optimal
+
+3. **Refactor Phase**:
+   - Clean up implementation
+   - Ensure tests still pass
+   - Improve both implementation AND test code
+
+### TDD Enforcement
+
+**Do NOT start implementing `scripts/` changes before tests exist and fail.**
+
+Before writing ANY implementation code:
+1. ✅ Explicitly state: "Following TDD - writing tests first"
+2. ✅ Create test file in `tests/` directory (e.g., `test_new_feature.py`)
+3. ✅ Write failing tests that define expected behavior
+4. ✅ Run tests and show RED output proving tests fail
+5. ✅ Only then write implementation
+6. ✅ Run tests again and show GREEN output proving tests pass
+
+### Test Commands
+
+```bash
+# Run all tests
+cd tests && ../venv/bin/python3 run_tests.py
+
+# Run specific test file
+../venv/bin/python3 -m pytest test_filter_emails.py -v
+
+# Run tests matching pattern
+../venv/bin/python3 -m pytest -k "cluster" -v
+```
+
+### When TDD Applies
+
+| Change Type | TDD Required? |
+|------------|---------------|
+| New script | ✅ Yes |
+| New function in existing script | ✅ Yes |
+| Bug fix | ✅ Yes (write test that reproduces bug first) |
+| Refactoring | ✅ Yes (ensure existing tests pass) |
+| Documentation only | ❌ No |
+| Config changes | ❌ No |
+
+---
+
+## 📊 Code Quality Standards
+
+### File Size Limits
+
+| Entity | Max Lines | Action If Exceeded |
+|--------|-----------|-------------------|
+| Any script | 500 lines | Consider splitting |
+| Any function | 50 lines | Break into smaller functions |
+
+### Before Committing
+
+1. ✅ Run all tests: `cd tests && ../venv/bin/python3 run_tests.py`
+2. ✅ Check no regressions in existing functionality
+3. ✅ Update CLAUDE.md and agents.md if architecture changed
+4. ✅ Update SKILL.md if workflow changed

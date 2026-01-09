@@ -333,6 +333,30 @@ def generate_refinement_suggestions(results: List[Dict], personas: Dict) -> List
     return suggestions
 
 
+def find_top_mismatches(results: List[Dict], limit: int = 5) -> List[Dict]:
+    """Identify validation pairs with lowest composite scores.
+
+    Returns the worst-scoring pairs for manual review.
+    """
+    sorted_results = sorted(results, key=lambda r: r['composite_score'])
+
+    mismatches = []
+    for r in sorted_results[:limit]:
+        # Find weakest scoring areas
+        all_scores = {**r['tone_scores'], **r['structure_scores']}
+        weakest = sorted(all_scores.items(), key=lambda x: x[1])[:2]
+
+        mismatches.append({
+            "pair_id": r['pair_id'],
+            "inferred_persona": r['inferred_persona'],
+            "composite_score": r['composite_score'],
+            "weakest_areas": [name for name, _ in weakest],
+            "ground_truth": r['ground_truth_summary']
+        })
+
+    return mismatches
+
+
 def run_auto_validation() -> bool:
     """Run automatic validation using heuristics."""
     personas = load_personas()
@@ -375,6 +399,9 @@ def run_auto_validation() -> bool:
     # Generate suggestions
     suggestions = generate_refinement_suggestions(results, personas)
 
+    # Find top mismatches for manual review
+    top_mismatches = find_top_mismatches(results, limit=5)
+
     # Build report
     report = {
         "created": datetime.now().isoformat(),
@@ -386,6 +413,7 @@ def run_auto_validation() -> bool:
         },
         "persona_breakdown": {},
         "refinement_suggestions": suggestions,
+        "top_mismatches": top_mismatches,
         "detailed_results": results
     }
 
@@ -436,11 +464,46 @@ def run_auto_validation() -> bool:
             print(f"    Suggestion: {s['suggestion']}")
             print(f"    Reason: {s['reason']}")
 
+    # Always show top mismatches for manual review
+    if top_mismatches:
+        print(f"\n{'=' * 60}")
+        print("TOP 5 MISMATCHES - REVIEW THESE")
+        print(f"{'=' * 60}")
+        for i, m in enumerate(top_mismatches, 1):
+            print(f"\n  {i}. {m['pair_id']}")
+            print(f"     Persona: {m['inferred_persona']}")
+            print(f"     Score: {m['composite_score']:.0%}")
+            print(f"     Weak areas: {', '.join(m['weakest_areas'])}")
+            gt = m['ground_truth']
+            if gt.get('greeting'):
+                print(f"     Ground truth greeting: \"{gt['greeting']}\"")
+            if gt.get('closing'):
+                print(f"     Ground truth closing: \"{gt['closing']}\"")
+
+        print(f"\n{'─' * 60}")
+        print("ACTION REQUIRED: Review mismatches above and either:")
+        print("  1. Update persona_registry.json with fixes")
+        print("  2. Re-run validation to verify improvements")
+        print("  3. Document why mismatches are acceptable")
+        print(f"{'─' * 60}")
+
     print(f"\n{'=' * 60}")
     print(f"Reports saved to:")
     print(f"  {VALIDATION_REPORT_FILE}")
     print(f"  {VALIDATION_RESULTS_FILE}")
-    print(f"{'=' * 60}\n")
+    print(f"{'=' * 60}")
+
+    # Session boundary - explicit STOP
+    print(f"\n{'█' * 60}")
+    print("█  STOP - VALIDATION PHASE COMPLETE                        █")
+    print("█                                                          █")
+    print("█  DO NOT continue in this chat session.                   █")
+    print("█  START A NEW CHAT for:                                   █")
+    print("█    • LinkedIn analysis (Session 3)                       █")
+    print("█    • Skill generation (Session 4)                        █")
+    print("█                                                          █")
+    print("█  Reason: Clean context improves output quality.          █")
+    print(f"{'█' * 60}\n")
 
     return True
 

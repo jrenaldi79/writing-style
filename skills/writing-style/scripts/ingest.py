@@ -225,20 +225,31 @@ def ingest_batch(batch_file, dry_run=False):
                 print(f"\n📊 VALIDATION DATA AVAILABLE: {validation_count} held-out emails")
                 print(f"\nRecommended next steps:")
                 print(f"   1. VALIDATE personas first (blind test):")
-                print(f"      START NEW CHAT (Session 3: Judge)")
                 print(f"      python prepare_validation.py")
                 print(f"      python validate_personas.py --auto")
                 print(f"\n   2. THEN generate your writing clone skill:")
                 print(f"      python generate_skill.py --name <your-name>")
                 print(f"\n   3. Or add LinkedIn voice (optional):")
-                print(f"      START NEW CHAT → 'Run LinkedIn pipeline'")
+                print(f"      python fetch_linkedin_mcp.py --profile \"URL\"")
             else:
                 print(f"\nYou can now:")
                 print(f"   1. Generate your writing clone skill:")
                 print(f"      python generate_skill.py --name <your-name>")
                 print(f"   2. Or add LinkedIn voice first (optional):")
-                print(f"      START NEW CHAT → 'Run LinkedIn pipeline'")
-            print(f"{'═' * 60}\n")
+                print(f"      python fetch_linkedin_mcp.py --profile \"URL\"")
+            print(f"{'═' * 60}")
+
+            # Session boundary - explicit STOP
+            print(f"\n{'█' * 60}")
+            print("█  STOP - EMAIL ANALYSIS COMPLETE                          █")
+            print("█                                                          █")
+            print("█  START A NEW CHAT before proceeding to:                  █")
+            print("█    • Validation (Session 2b: Judge)                      █")
+            print("█    • LinkedIn (Session 3)                                █")
+            print("█    • Generation (Session 4)                              █")
+            print("█                                                          █")
+            print("█  Reason: Clean context improves output quality.          █")
+            print(f"{'█' * 60}\n")
 
     return True
 

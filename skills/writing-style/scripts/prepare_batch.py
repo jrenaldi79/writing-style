@@ -180,7 +180,22 @@ def prepare_cluster_batch(cluster_id: int) -> str:
     # Get unanalyzed emails from this cluster
     sample_ids = cluster.get('sample_ids', [])
     unanalyzed = [sid for sid in sample_ids if sid not in analyzed]
-    
+
+    # Calculate and show coverage
+    analyzed_count = len(sample_ids) - len(unanalyzed)
+    coverage = analyzed_count / len(sample_ids) if sample_ids else 0
+
+    if coverage > 0 and coverage < 1.0:
+        print(f"\n{'─' * 50}")
+        print(f"📊 CLUSTER {cluster_id} COVERAGE: {coverage:.0%}")
+        print(f"   Analyzed: {analyzed_count} / {len(sample_ids)} emails")
+        print(f"   Remaining: {len(unanalyzed)} emails")
+        if coverage < 0.8:
+            print(f"\n   ⚠️  WARNING: Coverage below 80%")
+            print(f"   Persona quality may suffer with incomplete data.")
+            print(f"   Run prepare_batch.py again after ingest to get remaining emails.")
+        print(f"{'─' * 50}\n")
+
     if not unanalyzed:
         return f"✅ Cluster {cluster_id} fully analyzed ({len(sample_ids)} emails)"
     
@@ -392,18 +407,28 @@ def show_clusters_status():
     for cluster in clusters_data.get('clusters', []):
         if cluster.get('is_noise'):
             continue
-        
+
         sample_ids = cluster.get('sample_ids', [])
-        unanalyzed = len([s for s in sample_ids if s not in analyzed])
-        
-        status = "✅" if unanalyzed == 0 else f"⏳ {unanalyzed} remaining"
-        
+        analyzed_count = sum(1 for s in sample_ids if s in analyzed)
+        unanalyzed = len(sample_ids) - analyzed_count
+        coverage = analyzed_count / len(sample_ids) if sample_ids else 0
+
+        # Status with coverage indicator
+        if unanalyzed == 0:
+            status = "✅ Complete"
+        elif analyzed_count == 0:
+            status = f"⏳ Not started ({len(sample_ids)} emails)"
+        elif coverage >= 0.8:
+            status = f"⏳ {coverage:.0%} coverage ({unanalyzed} remaining)"
+        else:
+            status = f"⚠️  {coverage:.0%} coverage ({unanalyzed} remaining) - BELOW 80%"
+
         # Get top characteristics
         enrichment = cluster.get('enrichment_summary', {})
         top_audience = ''
         if enrichment.get('audiences'):
             top_audience = max(enrichment['audiences'].items(), key=lambda x: x[1])[0]
-        
+
         print(f"\n  Cluster {cluster['id']}: {cluster['size']} emails ({top_audience})")
         print(f"    Status: {status}")
         print(f"    Examples: {', '.join(cluster.get('centroid_emails', [])[:2])}")
@@ -426,20 +451,52 @@ def find_next_cluster() -> Optional[int]:
     clusters_data = load_cluster_data()
     if not clusters_data:
         return None
-    
+
     analyzed = get_analyzed_ids()
-    
+
     for cluster in clusters_data.get('clusters', []):
         if cluster.get('is_noise'):
             continue
-        
+
         sample_ids = cluster.get('sample_ids', [])
         unanalyzed = [s for s in sample_ids if s not in analyzed]
-        
+
         if unanalyzed:
             return cluster['id']
-    
+
     return None
+
+
+def check_incomplete_clusters(target_cluster: int, analyzed: set) -> List[tuple]:
+    """Check for incomplete clusters before the target cluster.
+
+    Returns list of (cluster_id, remaining_count) for clusters that are
+    started but not complete (have some analysis but not 80%+ coverage).
+    """
+    clusters_data = load_cluster_data()
+    if not clusters_data:
+        return []
+
+    incomplete = []
+    for cluster in clusters_data.get('clusters', []):
+        if cluster.get('is_noise'):
+            continue
+
+        cid = cluster['id']
+        if cid >= target_cluster:
+            break
+
+        sample_ids = cluster.get('sample_ids', [])
+        analyzed_count = sum(1 for s in sample_ids if s in analyzed)
+
+        # Only flag if cluster was started but is incomplete
+        if analyzed_count > 0:
+            coverage = analyzed_count / len(sample_ids) if sample_ids else 0
+            if coverage < 0.8:
+                remaining = len(sample_ids) - analyzed_count
+                incomplete.append((cid, remaining, coverage))
+
+    return incomplete
 
 
 if __name__ == '__main__':
@@ -458,6 +515,8 @@ Examples:
     parser.add_argument('--all', '-a', action='store_true', help='Show all clusters status')
     parser.add_argument('--legacy', action='store_true', help='Legacy mode (no clustering)')
     parser.add_argument('--count', '-c', type=int, default=30, help='Email count for legacy mode')
+    parser.add_argument('--force', '-f', action='store_true',
+                        help='Skip coverage warnings and proceed anyway')
     
     args = parser.parse_args()
     
@@ -466,6 +525,20 @@ Examples:
     elif args.legacy:
         print(prepare_legacy_batch(args.count))
     elif args.cluster is not None:
+        # Check for incomplete earlier clusters
+        if not args.force:
+            analyzed = get_analyzed_ids()
+            incomplete = check_incomplete_clusters(args.cluster, analyzed)
+            if incomplete:
+                print(f"\n{'═' * 60}")
+                print("⚠️  WARNING: Incomplete clusters detected")
+                print(f"{'═' * 60}")
+                for cid, remaining, coverage in incomplete:
+                    print(f"   Cluster {cid}: {remaining} emails unanalyzed ({coverage:.0%} coverage)")
+                print(f"\n   Consider completing these first for better persona quality.")
+                print(f"   Or proceed with: python prepare_batch.py --cluster {args.cluster} --force")
+                print(f"{'═' * 60}\n")
+                exit(0)
         print(prepare_cluster_batch(args.cluster))
     else:
         # Auto-find next cluster

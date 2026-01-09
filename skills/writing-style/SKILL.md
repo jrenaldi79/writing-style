@@ -299,7 +299,12 @@ venv/bin/python3 cluster_emails.py --algorithm kmeans -k 5
 - `enriched_samples/` - Emails with metadata
 - `validation_set/` - Held-out samples for testing
 
-**Next:** Once satisfied with cluster count, stop here. Start new chat for Session 2 (Analysis).
+> **🛑 STOP HERE - START A NEW CHAT**
+>
+> Do NOT continue in this session. Context from preprocessing (6,500+ tokens of logs)
+> will degrade persona analysis quality.
+>
+> **Session 1 is complete when:** Clusters look reasonable, validation set exists.
 
 ---
 
@@ -389,7 +394,20 @@ venv/bin/python3 prepare_batch.py --all  # Check remaining
 - `ingest.py` - Ingests your analysis JSON into persona_registry.json
 - `persona_registry.json` - All discovered personas
 
-**Next:** After all clusters analyzed, proceed to Session 2b (Validation) or skip to Session 3 (LinkedIn) / Session 4 (Generation).
+#### Cluster Coverage Requirement
+
+**You MUST analyze at least 80% of each cluster's emails** before moving to the next cluster. Incomplete coverage creates unreliable personas.
+
+- Run `prepare_batch.py` repeatedly until "Unanalyzed: 0" or coverage reaches 80%+
+- The script will warn you if coverage drops below 80%
+- Use `--force` flag to bypass warnings if you have a documented reason
+
+> **🛑 STOP HERE - START A NEW CHAT**
+>
+> After all clusters are analyzed, the `ingest.py` script will display a STOP banner.
+> Do NOT continue to validation or generation in this session.
+>
+> **Session 2 is complete when:** All clusters show ✅ Complete or 80%+ coverage.
 
 ---
 
@@ -494,7 +512,12 @@ venv/bin/python3 validate_personas.py --auto
 - `validation_results.json` - Detailed per-email results
 - `validation_report.json` - Summary with refinement suggestions
 
-**Next:** Proceed to Session 3 (LinkedIn) or Session 4 (Generation).
+> **🛑 STOP HERE - START A NEW CHAT**
+>
+> The `validate_personas.py` script displays a STOP banner when complete.
+> Do NOT continue to LinkedIn or generation in this session.
+>
+> **Session 2b is complete when:** Validation score is acceptable (70%+) or refinements are documented.
 
 ---
 
