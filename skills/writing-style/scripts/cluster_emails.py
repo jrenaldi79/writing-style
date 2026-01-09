@@ -354,8 +354,54 @@ def run_clustering(algorithm: str = 'auto', k: Optional[int] = None,
             print(f"    Examples: {', '.join(c['centroid_emails'][:2])}")
     print(f"{'═' * 50}")
     print(f"\n💾 Results saved to: {CLUSTERS_FILE}")
-    print(f"\n💡 Next step: Run prepare_batch.py to analyze clusters")
-    
+
+    # Session boundary and feedback checkpoint
+    print(f"\n{'═' * 60}")
+    print("🛑 SESSION 1 COMPLETE - CHECKPOINT")
+    print(f"{'═' * 60}")
+    print("\n📊 CLUSTER SUMMARY - Review before proceeding:\n")
+
+    for c in clusters:
+        if c['is_noise']:
+            continue
+        enrichment = c['enrichment_summary']
+        top_audience = max(enrichment['audiences'].items(), key=lambda x: x[1])[0] if enrichment['audiences'] else 'unknown'
+        top_type = max(enrichment['recipient_types'].items(), key=lambda x: x[1])[0] if enrichment['recipient_types'] else 'unknown'
+
+        # Predict persona type based on enrichment
+        persona_hint = f"{top_type} → {top_audience}"
+        print(f"  Cluster {c['id']}: {c['size']} emails")
+        print(f"    Likely persona: {persona_hint}")
+        print(f"    Recipient types: {enrichment['recipient_types']}")
+        print(f"    Audiences: {enrichment['audiences']}")
+        print(f"    Example emails: {', '.join(c['centroid_emails'][:2])}")
+        print()
+
+    print(f"{'─' * 60}")
+    print("🤔 FEEDBACK CHECKPOINT:")
+    print(f"{'─' * 60}")
+    print("Review the clusters above. Consider:")
+    print("  • Do these groupings make sense for your communication styles?")
+    print("  • Too few clusters? Try: --min-cluster 3 (smaller clusters)")
+    print("  • Too many clusters? Try: --min-cluster 8 (larger clusters)")
+    print("  • Want specific count? Try: --algorithm kmeans -k 5")
+    print()
+    print("If clusters look good, proceed to persona analysis.")
+    print(f"{'─' * 60}")
+
+    print(f"\n{'═' * 60}")
+    print("👉 ACTION REQUIRED: START A NEW CHAT")
+    print(f"{'═' * 60}")
+    print("Preprocessing is complete. Your context window now contains")
+    print("logs from fetching, filtering, and clustering.")
+    print()
+    print("To keep context clean for persona analysis:")
+    print("  1. START A NEW CHAT")
+    print("  2. Say: 'Continue with email persona analysis'")
+    print()
+    print("State is saved - no progress will be lost.")
+    print(f"{'═' * 60}\n")
+
     return result
 
 

@@ -92,15 +92,29 @@ Expected output: Shows state.json content OR "NEW_PROJECT"
 
 **CRITICAL:** This workflow uses strategic session boundaries to maintain clean context and deliver higher quality outputs.
 
-### Session Structure
-```
-Session 1: Preprocessing → State saved → STOP (new chat required)
-Session 2: Analysis → State saved → STOP (new chat required)
-Session 3: LinkedIn (optional) → State saved → STOP (new chat required)
-Session 4: Generation → Final output → DONE!
-```
+### Session Structure (Context Management)
 
-**Why?** Preprocessing generates 6,500+ tokens of logs that would clutter context during creative work. Separating phases ensures each task works with only relevant information.
+**Session 1: Preprocessing**
+- Fetch emails → Filter → Enrich → Embed → Cluster
+- **ENDS WITH:** Cluster summary + feedback checkpoint
+- **CONTEXT:** Heavy with fetch/filter logs
+- **ACTION:** Review clusters, adjust parameters if needed, then START NEW CHAT
+
+**Session 2: Email Persona Analysis + Generation**
+- LLM reads clusters, analyzes emails, creates persona JSONs
+- Runs ingest.py after each batch
+- Generate system prompt when all clusters done
+- **CONTEXT:** Can stay in this session - each cluster analysis is self-contained
+
+**Session 3: LinkedIn (Optional)**
+- Fetch posts → Filter → Generate LinkedIn persona
+- Generate final combined system prompt
+- **CONTEXT:** Separate from email pipeline
+
+**Why separate sessions?**
+- Preprocessing generates 6,500+ tokens of logs
+- Fresh context for creative persona analysis work
+- Scripts print session boundary reminders automatically
 
 **State Persistence:** All progress saved to `state.json` - resume anytime without data loss.
 

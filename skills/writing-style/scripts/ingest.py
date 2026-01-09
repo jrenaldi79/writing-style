@@ -174,13 +174,54 @@ def ingest_batch(batch_file, dry_run=False):
     print(f"{'═' * 50}")
     print(f"Samples processed: {saved_count}")
     print(f"Personas: {', '.join(f'{k} ({v})' for k, v in persona_counts.items())}")
-    
+
     if not dry_run:
         print(f"Total samples: {state['total_samples']}")
         print(f"Batches completed: {state['batches_completed']}")
-    
+
     print(f"{'═' * 50}")
-    
+
+    # Check remaining clusters and provide guidance
+    if not dry_run:
+        clusters_file = get_path("clusters.json")
+        remaining_clusters = 0
+        total_clusters = 0
+
+        if clusters_file.exists():
+            with open(clusters_file) as f:
+                clusters_data = json.load(f)
+
+            # Count clusters that still need analysis
+            analyzed_ids = set()
+            if SAMPLES_DIR.exists():
+                for f in SAMPLES_DIR.glob("*.json"):
+                    analyzed_ids.add(f.stem)
+
+            for cluster in clusters_data.get('clusters', []):
+                if cluster.get('is_noise'):
+                    continue
+                total_clusters += 1
+                sample_ids = cluster.get('sample_ids', [])
+                unanalyzed = [s for s in sample_ids if s not in analyzed_ids]
+                if unanalyzed:
+                    remaining_clusters += 1
+
+        if remaining_clusters > 0:
+            print(f"\n📊 PROGRESS: {total_clusters - remaining_clusters}/{total_clusters} clusters analyzed")
+            print(f"\n💡 Next step:")
+            print(f"   Run: python prepare_batch.py")
+            print(f"   Remaining clusters: {remaining_clusters}")
+        else:
+            print(f"\n{'═' * 60}")
+            print("✅ ALL CLUSTERS ANALYZED!")
+            print(f"{'═' * 60}")
+            print(f"\nEmail personas are ready. You can now:")
+            print(f"   1. Generate the system prompt:")
+            print(f"      python generate_system_prompt.py")
+            print(f"   2. Or add LinkedIn voice (optional):")
+            print(f"      START NEW CHAT → 'Run LinkedIn pipeline'")
+            print(f"{'═' * 60}\n")
+
     return True
 
 

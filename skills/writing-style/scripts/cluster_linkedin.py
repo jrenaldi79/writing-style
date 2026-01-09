@@ -679,11 +679,27 @@ def main():
     with open(OUTPUT_FILE, 'w') as f:
         json.dump(v2_persona, f, indent=2)
 
-    print(f"✅ Generated V2 LinkedIn Persona: {OUTPUT_FILE}")
+    print(f"\n{'═' * 60}")
+    print("✅ LINKEDIN PERSONA GENERATED")
+    print(f"{'═' * 60}")
     print(f"   Schema version: {v2_persona['schema_version']}")
     print(f"   Confidence: {v2_persona['confidence']}")
     print(f"   Sample size: {v2_persona['sample_size']}")
+    print(f"\nTone vectors:")
     print(json.dumps(v2_persona['voice']['tone_vectors'], indent=2))
+    print(f"\n💾 Saved to: {OUTPUT_FILE}")
+
+    print(f"\n{'═' * 60}")
+    print("🛑 SESSION 3 COMPLETE - LINKEDIN DONE")
+    print(f"{'═' * 60}")
+    print("\nLinkedIn voice profile is ready.")
+    print("\n👉 NEXT STEP: Generate final system prompt")
+    print("   Run: python generate_system_prompt.py")
+    print()
+    print("This will combine your Email personas + LinkedIn voice")
+    print("into a single writing_assistant.md file.")
+    print(f"{'═' * 60}\n")
+
 
 if __name__ == '__main__':
     main()
