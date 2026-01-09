@@ -204,7 +204,7 @@ venv/bin/python3 -c 'from state_manager import init_state; init_state(".")'
 venv/bin/python3 fetch_emails.py --check
 
 # 6. Run preprocessing pipeline (MCP check runs automatically)
-venv/bin/python3 fetch_emails.py --count 200 --holdout 0.15
+venv/bin/python3 fetch_emails.py --count 300 --holdout 0.15
 venv/bin/python3 filter_emails.py
 venv/bin/python3 enrich_emails.py
 venv/bin/python3 embed_emails.py

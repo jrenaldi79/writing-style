@@ -398,8 +398,8 @@ Examples:
     )
     parser.add_argument("--check", action="store_true",
                         help="Verify Google Workspace MCP is installed and authenticated")
-    parser.add_argument("--count", type=int, default=100,
-                        help="Number of emails to fetch (default: 100)")
+    parser.add_argument("--count", type=int, default=300,
+                        help="Number of emails to fetch (default: 300)")
     parser.add_argument("--older", action="store_true",
                         help="Fetch older emails (go back in history)")
     parser.add_argument("--holdout", type=float, default=0.0,

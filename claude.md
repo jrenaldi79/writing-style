@@ -79,7 +79,7 @@ Use `venv/bin/python3` (or `venv\Scripts\python.exe` on Windows).
 # Setup env
 python3 -m venv venv && venv/bin/python3 -m pip install -r requirements.txt
 # Email pipeline with holdout for validation
-venv/bin/python3 fetch_emails.py --count 200 --holdout 0.15
+venv/bin/python3 fetch_emails.py --count 300 --holdout 0.15
 venv/bin/python3 filter_emails.py
 venv/bin/python3 enrich_emails.py && venv/bin/python3 embed_emails.py
 venv/bin/python3 cluster_emails.py

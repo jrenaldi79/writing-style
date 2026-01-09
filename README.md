@@ -432,7 +432,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # 3. Run Pipeline
-python3 skills/writing-style/scripts/fetch_emails.py --count 200
+python3 skills/writing-style/scripts/fetch_emails.py --count 300
 ```
 
 ---
