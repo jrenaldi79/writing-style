@@ -427,13 +427,12 @@ Examples:
         show_status()
         return
 
-    # Get user name
+    # Get user name (required CLI argument)
     user_name = args.name
     if not user_name:
-        user_name = input("Enter your name for the skill (e.g., 'john'): ").strip()
-        if not user_name:
-            print("❌ Name is required")
-            return
+        print("❌ Name is required. Use --name <your-name>")
+        print("   Example: python generate_skill.py --name john")
+        sys.exit(1)
 
     # Validate name
     if not user_name.replace('-', '').replace('_', '').isalnum():

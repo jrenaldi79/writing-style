@@ -424,18 +424,58 @@ venv/bin/python3 prepare_batch.py --all  # Check remaining
 **Prerequisites:**
 - All clusters analyzed (Session 2 complete)
 - Validation set exists (`fetch_emails.py --holdout 0.15` was used in Session 1)
+- (Recommended) OpenRouter API key for true blind validation
+
+#### OpenRouter Setup (Recommended)
+
+For **true blind validation**, an LLM generates replies using only the persona characteristics (never seeing the actual emails). This requires an OpenRouter API key.
+
+The skill automatically detects your API key from:
+
+1. **Chatwise settings** (Recommended) - If you've configured OpenRouter in Chatwise, the skill will use it automatically.
+
+2. **Environment variable** - Set `OPENROUTER_API_KEY` in your terminal:
+   ```bash
+   export OPENROUTER_API_KEY='your-key-here'
+   # Or add to ~/.bashrc or ~/.zshrc for persistence
+   ```
+
+Get your key at: https://openrouter.ai/keys
+
+#### Model Selection
+
+Choose which LLM model to use for generating validation replies:
+
+```bash
+# List available models (last 6 months only)
+venv/bin/python3 validate_personas.py --list-models
+
+# Set your preferred model
+venv/bin/python3 validate_personas.py --set-model 'anthropic/claude-sonnet-4-20250514'
+```
+
+The script shows models from major providers (Anthropic, OpenAI, Google, Meta, Mistral) with pricing and context length info. Your selection is saved to `openrouter_model.json`.
+
+Default model: `anthropic/claude-sonnet-4-20250514`
+
+Without OpenRouter, validation falls back to template-based generation (less accurate).
+
+#### Validation Commands
 
 ```bash
 cd ~/Documents/my-writing-style
 
-# 1. Check validation data exists
+# 1. Check persona health (detects wrong filenames, schema issues)
+venv/bin/python3 validate_personas.py --health
+
+# 2. Check validation data exists
 ls validation_set/*.json | wc -l
 # Should show 15-30 emails (15% of total)
 
-# 2. Extract context/reply pairs from validation emails
+# 3. Extract context/reply pairs from validation emails
 venv/bin/python3 prepare_validation.py
 
-# 3. Run blind validation test
+# 4. Run blind validation test
 venv/bin/python3 validate_personas.py --auto
 ```
 
@@ -446,8 +486,11 @@ venv/bin/python3 validate_personas.py --auto
    - **Context**: What was received (quoted text, subject, sender)
    - **Ground truth**: Your actual reply (hidden from scoring)
 3. **Inference**: For each validation email, determine which persona should respond
-4. **Scoring**: Compare expected patterns against actual reply
-5. **Refinement**: Suggest persona adjustments based on mismatches
+4. **Generate reply** - A separate LLM (via OpenRouter) generates a reply using ONLY the persona + context. This LLM has never seen the actual emails, ensuring true blind validation.
+5. **Compare**: The generated reply vs your actual reply shows if the persona captures your voice
+6. **Refinement**: Suggest persona adjustments based on mismatches
+
+**Why a separate LLM call?** The LLM running this skill may have seen the actual emails during analysis (Session 2). A fresh LLM call with only persona + context ensures unbiased evaluation.
 
 #### Validation Metrics
 
@@ -500,6 +543,41 @@ mv temp.json persona_registry.json
 # Re-validate
 venv/bin/python3 validate_personas.py --auto
 ```
+
+#### LLM-Driven Feedback Workflow
+
+For deeper review with generated reply previews, use the feedback workflow:
+
+```bash
+# 1. Review mismatches with side-by-side comparison
+#    Shows: actual reply vs what persona would generate
+venv/bin/python3 validate_personas.py --review
+
+# 2. Record feedback for each mismatch (positive or negative)
+venv/bin/python3 validate_personas.py --feedback 'email_001' --sounds-like-me true
+venv/bin/python3 validate_personas.py --feedback 'email_002' --sounds-like-me false --notes 'too formal for this context'
+
+# 3. View accumulated suggestions based on feedback
+venv/bin/python3 validate_personas.py --suggestions
+```
+
+**CLI Options:**
+| Flag | Purpose |
+|------|---------|
+| `--health` | Check persona file naming and schema issues |
+| `--auto` | Run automatic validation with heuristics |
+| `--review` | Show mismatches with generated reply previews |
+| `--feedback <id>` | Record feedback for a validation pair |
+| `--sounds-like-me` | Whether generated reply sounds authentic (true/false) |
+| `--notes` | Optional explanation for negative feedback |
+| `--suggestions` | Show refinement suggestions from feedback |
+| `--report` | Display validation report |
+| `--status` | Show validation status |
+
+**Health Check Detects:**
+- Wrong filename (`personas.json` instead of `persona_registry.json`)
+- Schema issues (characteristics as list instead of dict with tone vectors)
+- Missing required fields (formality, warmth, directness)
 
 #### When to Skip Validation
 
@@ -911,7 +989,9 @@ Once installed, test the skill by asking:
 │   ├── linkedin_persona.json  # LinkedIn voice (if used)
 │   ├── validation_pairs.json  # Context/reply pairs (for validation)
 │   ├── validation_results.json # Per-email validation results
-│   └── validation_report.json # Summary with refinements
+│   ├── validation_report.json # Summary with refinements
+│   ├── validation_review.json # Mismatches with generated replies
+│   └── validation_feedback.json # User feedback on mismatches
 │
 └── [name]-writing-clone/      # ← FINAL OUTPUT: Installable skill
     ├── SKILL.md               # Main skill file with frontmatter
@@ -1127,7 +1207,13 @@ Once installed, test the skill by asking:
 | Script | Purpose | Input | Output |
 |--------|---------|-------|--------|
 | `prepare_validation.py` | Extract context/reply pairs | validation_set/ | validation_pairs.json |
-| `validate_personas.py` | Blind validation test | personas + pairs | validation_report.json |
+| `validate_personas.py --health` | Check persona file/schema issues | persona_registry.json | Console output |
+| `validate_personas.py --auto` | Automatic blind validation | personas + pairs | validation_report.json |
+| `validate_personas.py --review` | Review mismatches with generated replies | personas + pairs | validation_review.json |
+| `validate_personas.py --feedback` | Record feedback on mismatch | pair_id + response | validation_feedback.json |
+| `validate_personas.py --suggestions` | Show refinement suggestions | feedback | Console output |
+| `validate_personas.py --list-models` | List available OpenRouter models | OPENROUTER_API_KEY | Console output |
+| `validate_personas.py --set-model` | Set model for LLM validation | model_id | openrouter_model.json |
 
 ### LinkedIn Scripts
 
@@ -1144,6 +1230,9 @@ Once installed, test the skill by asking:
 | Script | Purpose |
 |--------|----------|
 | `generate_skill.py` | Create final artifact |
+| `api_keys.py` | API key management (Chatwise + env var) |
+| `api_keys.py --check` | Verify OpenRouter API key is available |
+| `api_keys.py --source` | Show where API key was found |
 | `analysis_utils.py` | Helper functions |
 | `style_manager.py` | Style utilities |
 | `extract_linkedin_engagement.py` | Parse engagement data |

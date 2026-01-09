@@ -23,6 +23,7 @@ from datetime import datetime
 
 # Configuration
 from config import get_data_dir, get_path
+from api_keys import is_mcp_configured_in_chatwise, KNOWN_MCPS
 
 MCP_COMMAND = ["npx", "-y", "@presto-ai/google-workspace-mcp"]
 DATA_DIR = get_data_dir()
@@ -121,6 +122,13 @@ def check_mcp_auth(verbose=True):
         tuple: (success: bool, message: str)
     """
     import shutil
+
+    # Check if MCP is configured in Chatwise
+    if verbose:
+        if is_mcp_configured_in_chatwise(KNOWN_MCPS["google-workspace"]):
+            print("✅ Google Workspace MCP is configured in Chatwise")
+        else:
+            print("⚠️  Google Workspace MCP is not configured in Chatwise (will use npx directly)")
 
     # Check if npx is available
     if not shutil.which("npx"):

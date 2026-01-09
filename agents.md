@@ -37,6 +37,7 @@
 │       │   └── output_template.md
 │       └── scripts/            # Core Python logic
 │           ├── analysis_utils.py
+│           ├── api_keys.py
 │           ├── cluster_emails.py
 │           ├── config.py
 │           ├── cluster_linkedin.py
@@ -116,6 +117,79 @@ cd tests && ../venv/bin/python3 run_tests.py
 - **Paths:** Always use OS-agnostic `pathlib`.
 - **Validation:** User-interactive verification required for profile data.
 - **Privacy:** Intermediate data remains local; only patterns are saved to personas.
+
+---
+
+## 🤖 LLM-Callable Script Design
+
+**Scripts in this project are executed by LLMs via shell commands, NOT by humans interactively.**
+
+This is a critical design constraint. All scripts must be fully automatable without human intervention during execution.
+
+### ❌ Never Do This
+
+```python
+# BAD: Requires human at keyboard
+response = input("Do you want to continue? (y/n): ")
+choice = input("Select option (1-3): ")
+
+# BAD: Interactive loops
+while True:
+    action = input("Next action: ")
+    if action == "quit":
+        break
+```
+
+### ✅ Always Do This
+
+```python
+# GOOD: CLI arguments for all inputs
+parser.add_argument("--confirm", action="store_true")
+parser.add_argument("--option", choices=["1", "2", "3"])
+
+# GOOD: Separate commands for multi-step workflows
+parser.add_argument("--review", action="store_true", help="Output data for review")
+parser.add_argument("--feedback", metavar="ID", help="Record feedback for item")
+parser.add_argument("--apply", action="store_true", help="Apply changes")
+```
+
+### Design Principles
+
+| Principle | Implementation |
+|-----------|----------------|
+| **No stdin** | All inputs via CLI args or config files |
+| **Structured output** | JSON for LLM consumption, human-readable summaries |
+| **Idempotent operations** | Safe to re-run without side effects |
+| **Atomic commands** | One action per invocation, chain via separate calls |
+| **Clear exit codes** | 0 = success, non-zero = specific error types |
+
+### Multi-Step Workflow Pattern
+
+When a workflow requires user decisions (like reviewing and approving changes):
+
+```bash
+# Step 1: Generate review data (LLM reads output)
+python script.py --review > review.json
+
+# Step 2: LLM analyzes and decides, then records decisions
+python script.py --approve item_001
+python script.py --reject item_002 --reason "Not applicable"
+
+# Step 3: Apply approved changes
+python script.py --apply
+```
+
+### External LLM Calls for Blind Validation
+
+When validation requires an LLM that hasn't seen the source data (to avoid context pollution):
+
+```python
+# GOOD: Use external API (OpenRouter) for blind validation
+def generate_blind_reply(persona, context):
+    # Call external LLM that never saw the training emails
+    response = requests.post(OPENROUTER_API_URL, ...)
+    return response.json()["choices"][0]["message"]["content"]
+```
 
 ---
 
