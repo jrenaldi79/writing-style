@@ -55,9 +55,26 @@ def check_dependencies():
 
 
 def extract_body(email_data: dict) -> str:
-    """Extract plain text body from email data."""
+    """Extract plain text body from email data.
+
+    Supports multiple formats:
+    1. Simplified format: original_data.body (from fetch_emails.py)
+    2. Direct attribute: body (plain text)
+    3. Gmail API format: payload.body.data (base64 encoded)
+    """
+    # Priority 1: Check simplified/enriched format (original_data.body)
+    if 'original_data' in email_data:
+        body = email_data['original_data'].get('body', '')
+        if body:
+            return body
+
+    # Priority 2: Direct body attribute
+    if 'body' in email_data and isinstance(email_data['body'], str):
+        return email_data['body']
+
+    # Priority 3: Gmail API format (payload.body.data, base64 encoded)
     payload = email_data.get('payload', {})
-    
+
     def find_text_part(parts):
         for part in parts:
             mime_type = part.get('mimeType', '')
@@ -73,19 +90,20 @@ def extract_body(email_data: dict) -> str:
                 if result:
                     return result
         return None
-    
+
     if 'parts' in payload:
         body = find_text_part(payload['parts'])
         if body:
             return body
-    
+
     body_data = payload.get('body', {}).get('data', '')
     if body_data:
         try:
             return base64.urlsafe_b64decode(body_data).decode('utf-8')
         except:
             pass
-    
+
+    # Final fallback: snippet
     return email_data.get('snippet', '')
 
 

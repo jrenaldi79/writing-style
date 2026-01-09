@@ -275,6 +275,86 @@ class TestSilhouetteWarning(unittest.TestCase):
             "Single cluster should not trigger silhouette warning")
 
 
+class TestExtractBody(unittest.TestCase):
+    """Test email body extraction from different formats."""
+
+    def test_extract_body_from_original_data(self):
+        """Should extract body from original_data.body (simplified format).
+
+        Bug: embed_emails.py extract_body() only checks payload.body.data,
+        but fetch_emails.py stores body in original_data.body.
+        """
+        # Import here to avoid issues if embed_emails not available
+        try:
+            import embed_emails
+        except ImportError:
+            self.skipTest("embed_emails not importable")
+
+        # Simplified format from fetch_emails.py
+        email_data = {
+            'original_data': {
+                'body': 'This is the email body text.',
+                'subject': 'Test Subject'
+            }
+        }
+
+        body = embed_emails.extract_body(email_data)
+        self.assertEqual(body, 'This is the email body text.',
+            "Should extract body from original_data.body")
+
+    def test_extract_body_from_enriched_format(self):
+        """Should extract body from enriched email structure."""
+        try:
+            import embed_emails
+        except ImportError:
+            self.skipTest("embed_emails not importable")
+
+        # Enriched format (body nested in original_data)
+        email_data = {
+            'id': 'test_001',
+            'original_data': {
+                'body': 'Enriched email body content here.',
+                'from': 'sender@example.com'
+            },
+            'enrichment': {
+                'recipient_type': 'individual'
+            }
+        }
+
+        body = embed_emails.extract_body(email_data)
+        self.assertEqual(body, 'Enriched email body content here.')
+
+    def test_extract_body_direct_body_attribute(self):
+        """Should extract body from direct body attribute."""
+        try:
+            import embed_emails
+        except ImportError:
+            self.skipTest("embed_emails not importable")
+
+        # Direct body attribute (another possible format)
+        email_data = {
+            'body': 'Direct body text.',
+            'subject': 'Test'
+        }
+
+        body = embed_emails.extract_body(email_data)
+        self.assertEqual(body, 'Direct body text.')
+
+    def test_extract_body_fallback_to_snippet(self):
+        """Should fall back to snippet when body not found."""
+        try:
+            import embed_emails
+        except ImportError:
+            self.skipTest("embed_emails not importable")
+
+        email_data = {
+            'snippet': 'This is the snippet fallback.'
+        }
+
+        body = embed_emails.extract_body(email_data)
+        self.assertEqual(body, 'This is the snippet fallback.')
+
+
 class TestEmbeddingThreshold(unittest.TestCase):
     """Test embedding minimum character threshold - Issue 4."""
 
