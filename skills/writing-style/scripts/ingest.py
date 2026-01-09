@@ -216,9 +216,9 @@ def ingest_batch(batch_file, dry_run=False):
             print("✅ ALL CLUSTERS ANALYZED!")
             print(f"{'═' * 60}")
             print(f"\nEmail personas are ready. You can now:")
-            print(f"   1. Generate the system prompt:")
-            print(f"      python generate_system_prompt.py")
-            print(f"   2. Or add LinkedIn voice (optional):")
+            print(f"   1. Generate your writing clone skill:")
+            print(f"      python generate_skill.py --name <your-name>")
+            print(f"   2. Or add LinkedIn voice first (optional):")
             print(f"      START NEW CHAT → 'Run LinkedIn pipeline'")
             print(f"{'═' * 60}\n")
 

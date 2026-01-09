@@ -693,11 +693,11 @@ def main():
     print("🛑 SESSION 3 COMPLETE - LINKEDIN DONE")
     print(f"{'═' * 60}")
     print("\nLinkedIn voice profile is ready.")
-    print("\n👉 NEXT STEP: Generate final system prompt")
-    print("   Run: python generate_system_prompt.py")
+    print("\n👉 NEXT STEP: Generate your writing clone skill")
+    print("   Run: python generate_skill.py --name <your-name>")
     print()
     print("This will combine your Email personas + LinkedIn voice")
-    print("into a single writing_assistant.md file.")
+    print("into an installable skill package.")
     print(f"{'═' * 60}\n")
 
 

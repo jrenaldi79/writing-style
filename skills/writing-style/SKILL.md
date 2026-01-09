@@ -38,13 +38,18 @@ Skills (code) and data (outputs) are intentionally separated:
 └── references/                  # Supporting documentation
     └── calibration.md
 
-~/Documents/my-writing-style/    # User data (generated outputs)
+~/Documents/my-writing-style/    # User data (intermediate outputs)
 ├── state.json                   # Workflow state
 ├── venv/                        # Python virtual environment
-├── clusters.json                # Email personas
-├── linkedin_persona.json        # LinkedIn persona
-└── prompts/                     # Final outputs
-    └── writing_assistant.md
+├── clusters.json                # Cluster assignments
+├── persona_registry.json        # Email personas
+└── linkedin_persona.json        # LinkedIn persona
+
+~/Documents/[name]-writing-clone/  # FINAL OUTPUT: Installable skill
+├── SKILL.md                     # Main skill file
+└── references/
+    ├── email_personas.md        # Detailed personas
+    └── linkedin_voice.md        # LinkedIn profile
 ```
 
 **Primary skill location:** `~/skills/writing-style/`
@@ -602,40 +607,44 @@ python3 merge_llm_analysis.py --dry-run llm_output.json
 ```bash
 cd ~/Documents/my-writing-style
 
-# 1. Check state (should show analysis complete)
-cat state.json
+# 1. Check available data
+venv/bin/python3 generate_skill.py --status
 
-# 2. Generate final prompt
-# Combines: persona_registry.json + linkedin_persona.json (if exists)
-python3 generate_system_prompt.py
+# 2. Generate the writing clone skill
+# Prompts for your name, then creates skill package
+venv/bin/python3 generate_skill.py --name john
 ```
 
 **Output:**
-- `prompts/writing_assistant.md` - **FINAL ARTIFACT**
+- `~/Documents/john-writing-clone/` - **INSTALLABLE SKILL PACKAGE**
+  - `SKILL.md` - Main skill file with frontmatter
+  - `references/email_personas.md` - Detailed email personas
+  - `references/linkedin_voice.md` - LinkedIn voice profile (if exists)
 
-### Inline Validation (Recommended)
+### Installing Your Writing Clone Skill
 
-After generating the prompt, validate it interactively:
+After generating the skill:
 
-1. **Generate test samples** - Create 2-3 sample emails using the prompt:
-   - Formal email to an executive
-   - Casual reply to a teammate
-   - Group announcement or update
+1. **Start a new chat** with clean context
 
-2. **Present to user** - Show the generated samples and ask:
-   > "Here's how the prompt would write in these scenarios. Does this sound like you?"
+2. **Ask the LLM to install it:**
+   > "Install my writing clone skill from ~/Documents/john-writing-clone"
 
-3. **Collect feedback** - User identifies what feels off:
-   > "The casual one is too stiff - I use more exclamation points"
-   > "The formal one is good but I never say 'Dear'"
+3. **Or manually copy:**
+   ```bash
+   cp -r ~/Documents/john-writing-clone ~/.claude/skills/
+   ```
 
-4. **Refine the prompt** - Update `writing_assistant.md` based on feedback
+### Testing Your Writing Clone
 
-5. **Iterate** - Generate new samples until user approves
+Once installed, test the skill by asking:
+- "Write a formal email to the CEO about Q4 results"
+- "Write a casual Slack message to my team"
+- "Write a LinkedIn post about product launches"
 
-**Why this works:** You are the ground truth for "does this sound like me" - no embedding score can match your judgment.
+**Collect feedback** - Identify what feels off and refine the skill.
 
-**Done!** You now have a personalized writing assistant.
+**Done!** You now have an installable writing clone skill.
 
 ---
 
@@ -657,7 +666,7 @@ After generating the prompt, validate it interactively:
 │   │   │   ├── fetch_linkedin_mcp.py     # LinkedIn automated fetch
 │   │   │   ├── filter_linkedin.py        # LinkedIn filtering
 │   │   │   ├── cluster_linkedin.py       # LinkedIn unification
-│   │   │   ├── generate_system_prompt.py # Final generation
+│   │   │   ├── generate_skill.py # Final generation
 │   │   │   └── [5 more utility scripts]
 │   │   │
 │   │   └── references/        # Documentation (4 files)
@@ -668,21 +677,25 @@ After generating the prompt, validate it interactively:
 │   │
 │   └── SYSTEM_PROMPT.md       # v3.0 multi-session logic
 │
-└── my-writing-style/          # Your personal data (created by scripts)
-    ├── state.json             # Workflow state (enables resume)
-    ├── raw_samples/           # Fetched emails/posts (200+)
-    ├── filtered_samples/      # Quality-filtered (170+)
-    ├── enriched_samples/      # With metadata (170+)
-    ├── validation_set/        # Held-out for testing (30)
-    ├── batches/               # Prepared for analysis
-    │   ├── batch_001.json     # Cluster 1 emails
-    │   ├── batch_002.json     # Cluster 2 emails
-    │   └── ...
-    ├── clusters.json          # Email cluster definitions
-    ├── persona_registry.json  # All email personas
-    ├── linkedin_persona.json  # LinkedIn voice (if used)
-    └── prompts/
-        └── writing_assistant.md  # ← FINAL OUTPUT
+├── my-writing-style/          # Your personal data (created by scripts)
+│   ├── state.json             # Workflow state (enables resume)
+│   ├── raw_samples/           # Fetched emails/posts (200+)
+│   ├── filtered_samples/      # Quality-filtered (170+)
+│   ├── enriched_samples/      # With metadata (170+)
+│   ├── validation_set/        # Held-out for testing (30)
+│   ├── batches/               # Prepared for analysis
+│   │   ├── batch_001.json     # Cluster 1 emails
+│   │   ├── batch_002.json     # Cluster 2 emails
+│   │   └── ...
+│   ├── clusters.json          # Email cluster definitions
+│   ├── persona_registry.json  # All email personas
+│   └── linkedin_persona.json  # LinkedIn voice (if used)
+│
+└── [name]-writing-clone/      # ← FINAL OUTPUT: Installable skill
+    ├── SKILL.md               # Main skill file with frontmatter
+    └── references/
+        ├── email_personas.md  # Detailed persona profiles
+        └── linkedin_voice.md  # LinkedIn voice profile
 ```
 
 ---
@@ -901,7 +914,7 @@ After generating the prompt, validate it interactively:
 
 | Script | Purpose |
 |--------|----------|
-| `generate_system_prompt.py` | Create final artifact |
+| `generate_skill.py` | Create final artifact |
 | `analysis_utils.py` | Helper functions |
 | `style_manager.py` | Style utilities |
 | `extract_linkedin_engagement.py` | Parse engagement data |
@@ -987,10 +1000,11 @@ cp /path/from/above/*.py ~/Documents/my-writing-style/
 - The LLM/agent must read the output, analyze the emails, and create `batches/batch_NNN.json` manually
 - See Session 2 documentation for the required JSON schema
 
-**"generate_system_prompt.py can't find file"**
+**"generate_skill.py can't find data"**
 - The script reads from `persona_registry.json` (created by ingest.py)
-- Run `python3 generate_system_prompt.py --status` to check what data is available
+- Run `python3 generate_skill.py --status` to check what data is available
 - Make sure you've run the full analysis pipeline including `ingest.py`
+- At least one of email personas or LinkedIn voice is required
 
 **"MCP server not found" or "Authentication required" (Email)**
 - The email pipeline requires the Google Workspace MCP server
