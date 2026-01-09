@@ -6,13 +6,26 @@ Runs outside of Claude to efficiently fetch LinkedIn posts without using tokens.
 Uses BrightData Social Media Scraper MCP server (same pattern as fetch_emails.py).
 
 Usage:
-    python fetch_linkedin_mcp.py --profile <url_or_username> [--limit 20] [--token YOUR_TOKEN]
+    python fetch_linkedin_mcp.py --check                                    # Verify MCP is configured
+    python fetch_linkedin_mcp.py --profile <url_or_username> [--limit 20]   # Fetch posts
     python fetch_linkedin_mcp.py --profile "https://linkedin.com/in/renaldi" --limit 20
     python fetch_linkedin_mcp.py --profile "renaldi" --limit 15
     python fetch_linkedin_mcp.py --status
 
 Environment:
-    MCP_TOKEN: Your BrightData API token (or use --token flag)
+    MCP_TOKEN: Your BrightData API token (required)
+
+    The MCP_TOKEN must be set in your terminal tool's environment.
+    For desktop-commander users, add to your MCP config:
+    {
+      "desktop-commander": {
+        "command": "npx",
+        "args": ["-y", "@anthropic/desktop-commander"],
+        "env": {
+          "MCP_TOKEN": "your-brightdata-api-token"
+        }
+      }
+    }
 """
 
 import subprocess
@@ -32,6 +45,10 @@ from config import get_data_dir, get_path
 DATA_DIR = get_data_dir()
 OUTPUT_DIR = get_path("linkedin_data")
 STATE_FILE = get_path("linkedin_fetch_state.json")
+
+# One-click install URLs for ChatWise users
+CHATWISE_BRIGHTDATA_URL = "https://chatwise.app/mcp-add?json=ewogICJtY3BTZXJ2ZXJzIjogewogICAgImJyaWdodGRhdGEiOiB7CiAgICAgICJjb21tYW5kIjogIm5weCIsCiAgICAgICJhcmdzIjogWyJAYnJpZ2h0ZGF0YS9tY3AiXSwKICAgICAgImVudiI6IHsKICAgICAgICAiQVBJX1RPS0VOIjogIllPVVJfQlJJR0hUREFUQV9UT0tFTiIsCiAgICAgICAgIkdST1VQUyI6ICJhZHZhbmNlZF9zY3JhcGluZyxzb2NpYWwiCiAgICAgIH0KICAgIH0KICB9Cn0="
+CHATWISE_DESKTOP_COMMANDER_URL = "https://chatwise.app/mcp-add?json=ewogICJtY3BTZXJ2ZXJzIjogewogICAgImRlc2t0b3AtY29tbWFuZGVyIjogewogICAgICAiY29tbWFuZCI6ICJucHgiLAogICAgICAiYXJncyI6IFsiLXkiLCAiQHdvbmRlcndoeS1lci9kZXNrdG9wLWNvbW1hbmRlciJdLAogICAgICAiZW52IjogewogICAgICAgICJNQ1BfVE9LRU4iOiAiWU9VUl9CUklHSFREQVRBX1RPS0VOIgogICAgICB9CiAgICB9CiAgfQp9"
 
 
 def get_mcp_command(token):
@@ -128,6 +145,153 @@ class MCPClient:
 
     def close(self):
         self.process.terminate()
+
+
+def check_brightdata_auth(token=None, verbose=True):
+    """
+    Verify that BrightData MCP server is installed and MCP_TOKEN is set.
+
+    Returns:
+        tuple: (success: bool, message: str, details: dict)
+    """
+    import shutil
+
+    details = {
+        "npx_available": False,
+        "token_set": False,
+        "mcp_connects": False,
+        "api_works": False
+    }
+
+    # Check if npx is available
+    if not shutil.which("npx"):
+        return False, "npx not found. Please install Node.js first.", details
+
+    details["npx_available"] = True
+
+    # Check for token
+    token = token or os.getenv("MCP_TOKEN")
+    if not token:
+        return False, "MCP_TOKEN environment variable not set.", details
+
+    details["token_set"] = True
+
+    if verbose:
+        print("🔍 Checking BrightData MCP server...")
+
+    try:
+        mcp_config = get_mcp_command(token)
+        client = MCPClient(mcp_config["command"], mcp_config["env"])
+        client.initialize()
+        details["mcp_connects"] = True
+
+        if verbose:
+            print("🔐 Verifying BrightData API token...")
+
+        # Try a simple search to verify the API works
+        result_json = client.call_tool("search_engine", {
+            "query": "test",
+            "engine": "google"
+        })
+        result = json.loads(result_json)
+
+        client.close()
+
+        # Check if we got a valid response
+        if "organic" in result or result == {}:
+            details["api_works"] = True
+            return True, "BrightData MCP is installed and authenticated.", details
+        elif "error" in result:
+            error_msg = result.get("error", {}).get("message", str(result))
+            if "auth" in error_msg.lower() or "token" in error_msg.lower() or "api" in error_msg.lower():
+                return False, f"API token invalid: {error_msg}", details
+            return False, f"API error: {error_msg}", details
+        else:
+            details["api_works"] = True
+            return True, "BrightData MCP is installed and authenticated.", details
+
+    except FileNotFoundError:
+        return False, "BrightData MCP server not found. npx failed to run @brightdata/mcp.", details
+    except Exception as e:
+        error_str = str(e).lower()
+        if "auth" in error_str or "token" in error_str or "api" in error_str:
+            return False, f"API authentication failed: {e}", details
+        elif "connection" in error_str or "closed" in error_str:
+            return False, f"MCP server connection failed: {e}", details
+        else:
+            return False, f"MCP check failed: {e}", details
+
+
+def print_linkedin_install_instructions(details=None):
+    """Print instructions for installing BrightData MCP and setting up MCP_TOKEN."""
+    print(f"\n{'═' * 70}")
+    print("LINKEDIN PIPELINE PREREQUISITES")
+    print(f"{'═' * 70}")
+
+    print("\nThe LinkedIn pipeline requires TWO things:")
+    print("\n1️⃣  BrightData MCP Server (for scraping LinkedIn)")
+    print("2️⃣  MCP_TOKEN environment variable (your BrightData API token)")
+
+    # Check what's missing
+    if details:
+        if not details.get("token_set"):
+            print("\n❌ MISSING: MCP_TOKEN is not set")
+        if not details.get("mcp_connects"):
+            print("❌ MISSING: BrightData MCP server not responding")
+
+    print(f"\n{'─' * 70}")
+    print("STEP 1: Get a BrightData API Token")
+    print(f"{'─' * 70}")
+    print("   1. Sign up at: https://brightdata.com/cp/start")
+    print("   2. Navigate to API settings to get your API token")
+    print("   3. Copy the token for the next steps")
+
+    print(f"\n{'─' * 70}")
+    print("STEP 2: Install BrightData MCP Server")
+    print(f"{'─' * 70}")
+    print("\n📦 ONE-CLICK INSTALL (ChatWise users):")
+    print(f"   {CHATWISE_BRIGHTDATA_URL}")
+    print("\n   ⚠️  After clicking, replace YOUR_BRIGHTDATA_TOKEN with your actual token!")
+    print("\n📦 MANUAL INSTALL:")
+    print('   Add to your MCP server configuration:')
+    print('   {')
+    print('     "brightdata": {')
+    print('       "command": "npx",')
+    print('       "args": ["@brightdata/mcp"],')
+    print('       "env": {')
+    print('         "API_TOKEN": "your-brightdata-api-token",')
+    print('         "GROUPS": "advanced_scraping,social"')
+    print('       }')
+    print('     }')
+    print('   }')
+
+    print(f"\n{'─' * 70}")
+    print("STEP 3: Set MCP_TOKEN in Terminal Tool")
+    print(f"{'─' * 70}")
+    print("\nThe scripts need MCP_TOKEN available when running via terminal.")
+    print("If using desktop-commander, update your config:")
+    print("\n📦 ONE-CLICK INSTALL (ChatWise users):")
+    print(f"   {CHATWISE_DESKTOP_COMMANDER_URL}")
+    print("\n   ⚠️  After clicking, replace YOUR_BRIGHTDATA_TOKEN with your actual token!")
+    print("\n📦 MANUAL INSTALL:")
+    print('   {')
+    print('     "desktop-commander": {')
+    print('       "command": "npx",')
+    print('       "args": ["-y", "@wonderwhy-er/desktop-commander"],')
+    print('       "env": {')
+    print('         "MCP_TOKEN": "your-brightdata-api-token"')
+    print('       }')
+    print('     }')
+    print('   }')
+
+    print(f"\n{'─' * 70}")
+    print("ALTERNATIVE: Set MCP_TOKEN in shell profile")
+    print(f"{'─' * 70}")
+    print("\nAdd to ~/.bashrc or ~/.zshrc:")
+    print('   export MCP_TOKEN="your-brightdata-api-token"')
+    print("\nThen restart your terminal or run: source ~/.bashrc")
+
+    print(f"\n{'═' * 70}\n")
 
 
 def load_state():
@@ -611,11 +775,23 @@ def process_and_save(posts, holdout=0.15):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Fetch LinkedIn posts via BrightData MCP"
+        description="Fetch LinkedIn posts via BrightData MCP",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python fetch_linkedin_mcp.py --check                              # Verify MCP is configured
+  python fetch_linkedin_mcp.py --profile "renaldi" --limit 20       # Fetch 20 posts
+  python fetch_linkedin_mcp.py --profile "https://linkedin.com/in/renaldi"
+        """
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Verify BrightData MCP is installed and MCP_TOKEN is set"
     )
     parser.add_argument(
         "--profile",
-        required=True,
+        default=None,
         help="LinkedIn profile URL or username (e.g., 'renaldi' or 'https://linkedin.com/in/renaldi')"
     )
     parser.add_argument(
@@ -629,15 +805,48 @@ def main():
         default=None,
         help="BrightData API token (default: reads from MCP_TOKEN env var)"
     )
-    
+    parser.add_argument(
+        "--skip-check",
+        action="store_true",
+        help="Skip MCP verification before fetching"
+    )
+
     args = parser.parse_args()
-    
+
+    # Handle --check flag
+    if args.check:
+        token = args.token or os.getenv("MCP_TOKEN")
+        success, message, details = check_brightdata_auth(token=token, verbose=True)
+        if success:
+            print(f"\n✅ {message}")
+            print("\nChecklist:")
+            print(f"   ✅ npx available")
+            print(f"   ✅ MCP_TOKEN set")
+            print(f"   ✅ BrightData MCP connects")
+            print(f"   ✅ API token valid")
+            sys.exit(0)
+        else:
+            print(f"\n❌ {message}")
+            print_linkedin_install_instructions(details)
+            sys.exit(1)
+
+    # Require --profile for fetching
+    if not args.profile:
+        print("❌ Error: --profile is required (unless using --check)")
+        print("   Example: python fetch_linkedin_mcp.py --profile 'renaldi' --limit 20")
+        sys.exit(1)
+
     # Get token
     token = args.token or os.getenv("MCP_TOKEN")
-    if not token:
-        print("❌ Error: No API token provided")
-        print("   Either set MCP_TOKEN environment variable or use --token flag")
-        sys.exit(1)
+
+    # Run MCP check before fetching (unless skipped)
+    if not args.skip_check:
+        success, message, details = check_brightdata_auth(token=token, verbose=True)
+        if not success:
+            print(f"\n❌ {message}")
+            print_linkedin_install_instructions(details)
+            sys.exit(1)
+        print(f"✅ {message}\n")
     
     # Normalize profile URL
     profile_url = normalize_profile_url(args.profile)

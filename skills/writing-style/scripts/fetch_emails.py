@@ -11,6 +11,7 @@ Usage:
     python fetch_emails.py --older [--count 50]    # Get older emails (go back in history)
     python fetch_emails.py --holdout 0.15          # Reserve 15% for validation
     python fetch_emails.py --status                 # Show fetch status
+    python fetch_emails.py --check                  # Verify MCP server is installed & authenticated
 """
 
 import subprocess
@@ -28,6 +29,9 @@ DATA_DIR = get_data_dir()
 OUTPUT_DIR = get_path("raw_samples")
 VALIDATION_DIR = get_path("validation_set")
 STATE_FILE = get_path("fetch_state.json")
+
+# One-click install URL for ChatWise users
+CHATWISE_INSTALL_URL = "https://chatwise.app/mcp-add?json=ew0KICAibWNwU2VydmVycyI6IHsNCiAgICAiZ29vZ2xlLXdvcmtzcGFjZSI6IHsNCiAgICAgICJjb21tYW5kIjogIm5weCIsDQogICAgICAiYXJncyI6IFsNCiAgICAgICAgIi15IiwNCiAgICAgICAgIkBwcmVzdG8tYWkvZ29vZ2xlLXdvcmtzcGFjZS1tY3AiDQogICAgICBdDQogICAgfQ0KICB9DQp9"
 
 
 class MCPClient:
@@ -107,6 +111,84 @@ class MCPClient:
 
     def close(self):
         self.process.terminate()
+
+
+def check_mcp_auth(verbose=True):
+    """
+    Verify that the Google Workspace MCP server is installed and authenticated.
+
+    Returns:
+        tuple: (success: bool, message: str)
+    """
+    import shutil
+
+    # Check if npx is available
+    if not shutil.which("npx"):
+        return False, "npx not found. Please install Node.js first."
+
+    if verbose:
+        print("🔍 Checking Google Workspace MCP server...")
+
+    try:
+        client = MCPClient(MCP_COMMAND)
+        client.initialize()
+
+        # Try a simple API call to verify authentication
+        if verbose:
+            print("🔐 Verifying Gmail authentication...")
+
+        # Search for just 1 email to test auth
+        result_json = client.call_tool("gmail.search", {
+            "query": "from:me",
+            "maxResults": 1
+        })
+        result = json.loads(result_json)
+
+        client.close()
+
+        # Check if we got a valid response (even empty is fine)
+        if "messages" in result or result == {}:
+            return True, "Google Workspace MCP is installed and authenticated."
+        elif "error" in result:
+            error_msg = result.get("error", {}).get("message", str(result))
+            if "auth" in error_msg.lower() or "token" in error_msg.lower() or "credential" in error_msg.lower():
+                return False, f"Authentication failed: {error_msg}"
+            return False, f"API error: {error_msg}"
+        else:
+            return True, "Google Workspace MCP is installed and authenticated."
+
+    except FileNotFoundError:
+        return False, "Google Workspace MCP server not found. npx failed to run the package."
+    except Exception as e:
+        error_str = str(e).lower()
+        if "auth" in error_str or "token" in error_str or "credential" in error_str or "login" in error_str:
+            return False, f"Authentication required: {e}"
+        elif "connection" in error_str or "closed" in error_str:
+            return False, f"MCP server connection failed: {e}"
+        else:
+            return False, f"MCP check failed: {e}"
+
+
+def print_install_instructions():
+    """Print instructions for installing the Google Workspace MCP server."""
+    print(f"\n{'═' * 60}")
+    print("GOOGLE WORKSPACE MCP NOT CONFIGURED")
+    print(f"{'═' * 60}")
+    print("\nThe email pipeline requires the Google Workspace MCP server")
+    print("to be installed and authenticated in your chat client.\n")
+    print("📦 ONE-CLICK INSTALL (ChatWise users):")
+    print(f"   {CHATWISE_INSTALL_URL}\n")
+    print("📦 MANUAL INSTALL (other clients):")
+    print("   Add this to your MCP server configuration:")
+    print('   {')
+    print('     "google-workspace": {')
+    print('       "command": "npx",')
+    print('       "args": ["-y", "@presto-ai/google-workspace-mcp"]')
+    print('     }')
+    print('   }')
+    print("\nAfter installing, authenticate with your Google account")
+    print("when prompted by the MCP server.")
+    print(f"{'═' * 60}\n")
 
 
 def load_state():
@@ -307,13 +389,16 @@ if __name__ == "__main__":
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  python fetch_emails.py --check        # Verify MCP server is configured
   python fetch_emails.py --count 100    # First run: get 100 most recent
-  python fetch_emails.py                # Get new emails since last fetch  
+  python fetch_emails.py                # Get new emails since last fetch
   python fetch_emails.py --older        # Get older emails (go back in history)
   python fetch_emails.py --status       # Show fetch status
         """
     )
-    parser.add_argument("--count", type=int, default=100, 
+    parser.add_argument("--check", action="store_true",
+                        help="Verify Google Workspace MCP is installed and authenticated")
+    parser.add_argument("--count", type=int, default=100,
                         help="Number of emails to fetch (default: 100)")
     parser.add_argument("--older", action="store_true",
                         help="Fetch older emails (go back in history)")
@@ -321,10 +406,31 @@ Examples:
                         help="Fraction to reserve for validation (e.g., 0.15 for 15%%)")
     parser.add_argument("--status", action="store_true",
                         help="Show current fetch status")
-    
+    parser.add_argument("--skip-check", action="store_true",
+                        help="Skip MCP verification before fetching")
+
     args = parser.parse_args()
-    
-    if args.status:
+
+    if args.check:
+        # Just run the check and exit
+        success, message = check_mcp_auth(verbose=True)
+        if success:
+            print(f"\n✅ {message}")
+            sys.exit(0)
+        else:
+            print(f"\n❌ {message}")
+            print_install_instructions()
+            sys.exit(1)
+    elif args.status:
         show_status()
     else:
+        # Verify MCP auth before fetching (unless skipped)
+        if not args.skip_check:
+            success, message = check_mcp_auth(verbose=True)
+            if not success:
+                print(f"\n❌ {message}")
+                print_install_instructions()
+                sys.exit(1)
+            print(f"✅ {message}\n")
+
         fetch_emails(count=args.count, older=args.older, holdout=args.holdout)

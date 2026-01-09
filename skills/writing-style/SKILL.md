@@ -111,10 +111,15 @@ Session 4: Generation → Final output → DONE!
 **CRITICAL RULE:** Never mix Email content with LinkedIn content.
 
 ### 1. Email Pipeline (Adaptive)
-- **Source:** Gmail API
+- **Source:** Google Workspace MCP Server (handles Gmail authentication automatically)
 - **Nature:** Context-dependent (Boss vs Team vs Client)
 - **Output:** Multiple Personas (3-7 clusters)
 - **Sessions:** Preprocessing (Session 1) → Analysis (Session 2)
+
+**Prerequisites:**
+- Google Workspace MCP server installed in your chat client (`@presto-ai/google-workspace-mcp`)
+- Already authenticated with Gmail (the MCP server handles auth - no credentials.json needed)
+- The `fetch_emails.py` script communicates directly with the MCP server
 
 ### 2. LinkedIn Pipeline (Unified)
 - **Source:** LinkedIn Scraper
@@ -129,6 +134,11 @@ Session 4: Generation → Final output → DONE!
 ### Session 1: Setup & Preprocessing
 
 **Purpose:** Fetch emails, filter quality, enrich metadata, cluster mathematically.
+
+**MCP Requirement:** The email scripts use the Google Workspace MCP server (`@presto-ai/google-workspace-mcp`) which should already be installed and authenticated in your chat client. No separate credentials.json or OAuth setup is needed - the MCP server handles all Gmail authentication.
+
+**Not installed yet?** Use this one-click install link for ChatWise:
+`https://chatwise.app/mcp-add?json=ew0KICAibWNwU2VydmVycyI6IHsNCiAgICAiZ29vZ2xlLXdvcmtzcGFjZSI6IHsNCiAgICAgICJjb21tYW5kIjogIm5weCIsDQogICAgICAiYXJncyI6IFsNCiAgICAgICAgIi15IiwNCiAgICAgICAgIkBwcmVzdG8tYWkvZ29vZ2xlLXdvcmtzcGFjZS1tY3AiDQogICAgICBdDQogICAgfQ0KICB9DQp9`
 
 ```bash
 # 1. Find skill installation
@@ -160,7 +170,11 @@ venv/bin/python3 -m pip install -r "$SKILL_DIR"/requirements.txt
 # 4. Initialize state management
 venv/bin/python3 -c 'from state_manager import init_state; init_state(".")'
 
-# 5. Run preprocessing pipeline
+# 5. Verify MCP is installed and authenticated (auto-runs before fetch)
+#    If this fails, the script will show install instructions with a one-click link
+venv/bin/python3 fetch_emails.py --check
+
+# 6. Run preprocessing pipeline (MCP check runs automatically)
 venv/bin/python3 fetch_emails.py --count 200 --holdout 0.15
 venv/bin/python3 filter_emails.py
 venv/bin/python3 enrich_emails.py
@@ -322,17 +336,48 @@ When you share others' content:
 
 **CRITICAL: Always provide full profile URL to avoid wrong-person errors!**
 
+#### Prerequisites
+
+The LinkedIn pipeline requires the BrightData MCP server and an API token.
+
+**Step 1: Get a BrightData API Token**
+1. Sign up at: https://brightdata.com/cp/start
+2. Navigate to API settings to get your token
+3. Copy the token for the next steps
+
+**Step 2: Install BrightData MCP Server (ChatWise one-click):**
+`https://chatwise.app/mcp-add?json=ewogICJtY3BTZXJ2ZXJzIjogewogICAgImJyaWdodGRhdGEiOiB7CiAgICAgICJjb21tYW5kIjogIm5weCIsCiAgICAgICJhcmdzIjogWyJAYnJpZ2h0ZGF0YS9tY3AiXSwKICAgICAgImVudiI6IHsKICAgICAgICAiQVBJX1RPS0VOIjogIllPVVJfQlJJR0hUREFUQV9UT0tFTiIsCiAgICAgICAgIkdST1VQUyI6ICJhZHZhbmNlZF9zY3JhcGluZyxzb2NpYWwiCiAgICAgIH0KICAgIH0KICB9Cn0=`
+
+After clicking, replace `YOUR_BRIGHTDATA_TOKEN` with your actual token!
+
+**Step 3: Set MCP_TOKEN in Terminal Tool**
+
+The scripts need MCP_TOKEN available when running via terminal. If using desktop-commander (ChatWise one-click):
+`https://chatwise.app/mcp-add?json=ewogICJtY3BTZXJ2ZXJzIjogewogICAgImRlc2t0b3AtY29tbWFuZGVyIjogewogICAgICAiY29tbWFuZCI6ICJucHgiLAogICAgICAiYXJncyI6IFsiLXkiLCAiQHdvbmRlcndoeS1lci9kZXNrdG9wLWNvbW1hbmRlciJdLAogICAgICAiZW52IjogewogICAgICAgICJNQ1BfVE9LRU4iOiAiWU9VUl9CUklHSFREQVRBX1RPS0VOIgogICAgICB9CiAgICB9CiAgfQp9`
+
+After clicking, replace `YOUR_BRIGHTDATA_TOKEN` with your actual token!
+
+**Alternative:** Add to `~/.bashrc` or `~/.zshrc`:
+```bash
+export MCP_TOKEN="your-brightdata-api-token"
+```
+
+#### Verify Setup & Fetch Posts
+
 ```bash
 cd ~/Documents/my-writing-style
 
+# Verify BrightData MCP is configured (run this first!)
+venv/bin/python3 fetch_linkedin_mcp.py --check
+
 # Fetch posts (fully automated with built-in verification)
-python3 fetch_linkedin_mcp.py --profile "https://linkedin.com/in/username" --limit 20
+venv/bin/python3 fetch_linkedin_mcp.py --profile "https://linkedin.com/in/username" --limit 20
 
 # Filter quality posts (min 200 chars)
-python3 filter_linkedin.py
+venv/bin/python3 filter_linkedin.py
 
 # Generate unified persona (NO clustering - single voice)
-python3 cluster_linkedin.py
+venv/bin/python3 cluster_linkedin.py
 ```
 
 **How it works:**
@@ -342,10 +387,6 @@ python3 cluster_linkedin.py
 4. **Content Types:** Captures both short-form posts (`/posts/`) and long-form articles (`/pulse/`)
 5. **Validation:** Filters out posts from wrong people
 6. **State Tracking:** Saves progress for resume/debugging
-
-**Requirements:**
-- BrightData API token in `MCP_TOKEN` environment variable
-- Full LinkedIn URL (not just username)
 
 **Why full URL matters:**
 - Common names return multiple profiles
@@ -772,13 +813,15 @@ After generating the prompt, validate it interactively:
 | Script | Purpose | Input | Output |
 |--------|---------|-------|--------|
 | `state_manager.py` | Track workflow progress | - | state.json |
-| `fetch_emails.py` | Pull from Gmail | Gmail API | raw_samples/*.json |
+| `fetch_emails.py` | Pull from Gmail | MCP Server* | raw_samples/*.json |
 | `filter_emails.py` | Quality gate | raw_samples/ | filtered_samples/ |
 | `enrich_emails.py` | Add metadata | filtered_samples/ | enriched_samples/ |
 | `embed_emails.py` | Generate vectors | enriched_samples/ | embeddings.npy |
 | `cluster_emails.py` | Math clustering | embeddings.npy | clusters.json |
 | `prepare_batch.py` | Format for analysis | clusters.json | batches/*.json |
 | `ingest.py` | Save persona | batches/*.json | persona_registry.json |
+
+*\*MCP Server = Google Workspace MCP (`@presto-ai/google-workspace-mcp`). Must be installed in your chat client. Authentication is handled by the MCP server - no credentials.json required.*
 
 ### LinkedIn Scripts
 
@@ -873,6 +916,21 @@ cp /path/from/above/*.py ~/Documents/my-writing-style/
 
 **"Missing dependencies"**
 - Run: `pip install sentence-transformers scikit-learn numpy hdbscan`
+
+**"MCP server not found" or "Authentication required" (Email)**
+- The email pipeline requires the Google Workspace MCP server
+- Verify with: `python3 fetch_emails.py --check`
+- One-click install (ChatWise): `https://chatwise.app/mcp-add?json=ew0KICAibWNwU2VydmVycyI6IHsNCiAgICAiZ29vZ2xlLXdvcmtzcGFjZSI6IHsNCiAgICAgICJjb21tYW5kIjogIm5weCIsDQogICAgICAiYXJncyI6IFsNCiAgICAgICAgIi15IiwNCiAgICAgICAgIkBwcmVzdG8tYWkvZ29vZ2xlLXdvcmtzcGFjZS1tY3AiDQogICAgICBdDQogICAgfQ0KICB9DQp9`
+- Manual: Add `@presto-ai/google-workspace-mcp` to your chat client's MCP config
+- After installing, authenticate with Google when prompted
+
+**"MCP_TOKEN not set" or "BrightData API failed" (LinkedIn)**
+- The LinkedIn pipeline requires BrightData MCP server + API token
+- Verify with: `python3 fetch_linkedin_mcp.py --check`
+- Get token: Sign up at https://brightdata.com/cp/start
+- Install BrightData MCP (ChatWise): See LinkedIn Prerequisites section above
+- Set MCP_TOKEN in desktop-commander or shell profile (`export MCP_TOKEN="..."`)
+- Both the BrightData MCP AND the terminal tool need the token configured
 
 ---
 
