@@ -454,9 +454,13 @@ venv/bin/python3 prepare_batch.py --all  # Check remaining
 
 ---
 
-### Session 2b: Blind Validation (Recommended)
+### Session 2b: Blind Validation (REQUIRED)
 
 **Purpose:** Test persona accuracy against held-out emails before generating the final skill.
+
+**⚠️ Validation has TWO phases - both are REQUIRED:**
+- **Phase 1 (Automatic):** Quick heuristic scoring to catch obvious issues
+- **Phase 2 (Interactive):** Manual judgment of generated replies - the fine-tuning phase
 
 **Why validate?**
 - Session 2 builds personas from training data only
@@ -503,7 +507,7 @@ Default model: `anthropic/claude-sonnet-4-20250514`
 
 Without OpenRouter, validation falls back to template-based generation (less accurate).
 
-#### Validation Commands
+#### Phase 1: Automatic Validation
 
 ```bash
 cd ~/Documents/my-writing-style
@@ -518,9 +522,11 @@ ls validation_set/*.json | wc -l
 # 3. Extract context/reply pairs from validation emails
 venv/bin/python3 prepare_validation.py
 
-# 4. Run blind validation test
+# 4. Run automatic validation (Phase 1)
 venv/bin/python3 validate_personas.py --auto
 ```
+
+**⚠️ DO NOT STOP HERE** - Phase 1 provides a baseline score using heuristics, but does NOT test real generated text. You MUST complete Phase 2 for accurate validation.
 
 #### How Blind Validation Works
 
@@ -587,22 +593,30 @@ mv temp.json persona_registry.json
 venv/bin/python3 validate_personas.py --auto
 ```
 
-#### LLM-Driven Feedback Workflow
+#### Phase 2: Interactive Validation (REQUIRED)
 
-For deeper review with generated reply previews, use the feedback workflow:
+**This is the FINE-TUNING phase** - you must manually judge generated replies to properly calibrate your personas.
 
 ```bash
-# 1. Review mismatches with side-by-side comparison
+# 1. Review generated replies side-by-side with your actual emails
 #    Shows: actual reply vs what persona would generate
 venv/bin/python3 validate_personas.py --review
 
-# 2. Record feedback for each mismatch (positive or negative)
+# 2. Judge each mismatch: "Does this sound like me?"
 venv/bin/python3 validate_personas.py --feedback 'email_001' --sounds-like-me true
 venv/bin/python3 validate_personas.py --feedback 'email_002' --sounds-like-me false --notes 'too formal for this context'
 
-# 3. View accumulated suggestions based on feedback
+# 3. Get refinement suggestions based on YOUR feedback
 venv/bin/python3 validate_personas.py --suggestions
+
+# 4. Apply refinements to persona_registry.json and re-validate
 ```
+
+**Why Phase 2 is REQUIRED:**
+- Heuristics ≠ Reality - automatic validation uses templates, not real generated text
+- You are the expert on your voice - only YOU can judge if text sounds authentic
+- Manual judgment is the ground truth for persona calibration
+- Skipping Phase 2 means your personas may not match your actual voice
 
 **CLI Options:**
 | Flag | Purpose |
@@ -622,23 +636,32 @@ venv/bin/python3 validate_personas.py --suggestions
 - Schema issues (characteristics as list instead of dict with tone vectors)
 - Missing required fields (formality, warmth, directness)
 
-#### When to Skip Validation
+#### When to Skip Phase 2 (Not Recommended)
 
-- Small email set (<100 emails) - holdout may be too small
-- Time-sensitive project - can validate post-generation
-- Low-stakes use case - informal writing assistance
+Phase 2 should only be skipped in rare circumstances:
+
+- **Never for initial skill generation** - you're learning your voice for the first time
+- **Only if regenerating after minor edits** - and you're confident in existing personas
+- **Time investment:** 30 minutes of manual judgment now saves hours of fixing bad outputs later
+
+The skill generator (`generate_skill.py`) will **block generation** if Phase 2 is not complete. Use `--skip-validation-check` to override, but this is not recommended.
 
 **Output:**
 - `validation_pairs.json` - Extracted context/reply pairs
 - `validation_results.json` - Detailed per-email results
 - `validation_report.json` - Summary with refinement suggestions
 
-> **🛑 STOP HERE - START A NEW CHAT**
+> **🛑 SESSION 2b COMPLETION CHECKLIST**
 >
-> The `validate_personas.py` script displays a STOP banner when complete.
-> Do NOT continue to LinkedIn or generation in this session.
+> Before proceeding to generation, confirm:
 >
-> **Session 2b is complete when:** Validation score is acceptable (70%+) or refinements are documented.
+> - [ ] **Phase 1 complete:** `validate_personas.py --auto` run, baseline score recorded
+> - [ ] **Phase 2 complete:** `validate_personas.py --review` run, reviewed generated replies
+> - [ ] **Feedback recorded:** `validate_personas.py --feedback` for mismatches
+> - [ ] **Suggestions reviewed:** `validate_personas.py --suggestions` applied to personas
+> - [ ] **Final check:** "Yes, these generated replies sound like me"
+>
+> **Session 2b is complete when:** Both phases are done and you're confident the personas capture your voice.
 
 ---
 

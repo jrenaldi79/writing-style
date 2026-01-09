@@ -93,9 +93,17 @@ REPORT_FILES = {
     "validation_report": {
         "file": "validation_report.json",
         "extract": lambda d: {
-            "score": d.get("overall_score", d.get("composite_score")),
+            "score": d.get("summary", {}).get("overall_score", d.get("overall_score")),
             "recommendation": d.get("recommendation"),
-            "completed_at": d.get("completed_at", d.get("generated_at"))
+            "completed_at": d.get("completed_at", d.get("created"))
+        }
+    },
+    "validation_feedback": {
+        "file": "validation_feedback.json",
+        "extract": lambda d: {
+            "feedback_count": len(d.get("feedback", [])),
+            "reviews_completed": sum(1 for f in d.get("feedback", []) if f.get("reviewed")),
+            "interactive_complete": d.get("interactive_complete", False)
         }
     },
 
@@ -246,7 +254,8 @@ def sync_state() -> dict:
         "validation": {
             "pairs": _check_step("validation_pairs"),
             "results": _check_step("validation_results"),
-            "report": _check_step("validation_report")
+            "report": _check_step("validation_report"),
+            "feedback": _check_step("validation_feedback")
         },
 
         "linkedin": {
@@ -375,11 +384,11 @@ def show_status(state: dict = None) -> str:
     lines.append("")
 
     # Validation
-    lines.append("✓ VALIDATION")
+    lines.append("✓ VALIDATION (Two Phases)")
     val = state.get("validation", {})
     lines.extend(_format_step("pairs", val.get("pairs", {})))
-    lines.extend(_format_step("results", val.get("results", {})))
-    lines.extend(_format_step("report", val.get("report", {})))
+    lines.extend(_format_step("Phase 1: auto", val.get("report", {})))
+    lines.extend(_format_step("Phase 2: interactive", val.get("feedback", {})))
     lines.append("")
 
     # LinkedIn
@@ -409,7 +418,7 @@ def show_status(state: dict = None) -> str:
         "setup": "Run: python fetch_emails.py --count 300 --holdout 0.15",
         "preprocessing": _get_next_preprocessing_step(prep),
         "analysis": "Run: python prepare_batch.py && python ingest.py batches/batch_*.json",
-        "validation": "Run: python prepare_validation.py && python validate_personas.py --auto",
+        "validation": "Run: python validate_personas.py --auto (Phase 1), then --review (Phase 2 required)",
         "linkedin": "Run: python fetch_linkedin_mcp.py --profile <url> (or skip to generation)",
         "generation": "Run: python generate_skill.py --name <your-name>",
         "complete": "Pipeline complete! Your skill is ready."

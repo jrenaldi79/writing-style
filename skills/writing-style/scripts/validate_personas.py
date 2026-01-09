@@ -1498,9 +1498,10 @@ def run_auto_validation() -> bool:
 
     # Print summary
     print(f"\n{'=' * 60}")
-    print("VALIDATION COMPLETE")
+    print("PHASE 1 COMPLETE: Automatic Validation")
     print(f"{'=' * 60}")
     print(f"\nOverall Score: {report['summary']['overall_score']}/100")
+    print(f"(Heuristic-based estimate - see Phase 2 for accurate validation)")
     print(f"\nTone Match:")
     for k, v in report['summary']['tone_scores'].items():
         bar = "+" * (v // 10) + "-" * (10 - v // 10)
@@ -1560,17 +1561,34 @@ def run_auto_validation() -> bool:
     print(f"  {VALIDATION_RESULTS_FILE}")
     print(f"{'=' * 60}")
 
-    # Session boundary - explicit STOP
-    print(f"\n{'█' * 60}")
-    print("█  STOP - VALIDATION PHASE COMPLETE                        █")
-    print("█                                                          █")
-    print("█  DO NOT continue in this chat session.                   █")
-    print("█  START A NEW CHAT for:                                   █")
-    print("█    • LinkedIn analysis (Session 3)                       █")
-    print("█    • Skill generation (Session 4)                        █")
-    print("█                                                          █")
-    print("█  Reason: Clean context improves output quality.          █")
-    print(f"{'█' * 60}\n")
+    # Phase 2 requirement message
+    print(f"\n{'=' * 60}")
+    print("PHASE 2 REQUIRED: Interactive Validation")
+    print(f"{'=' * 60}")
+    print("""
+The automatic validation provides a BASELINE score using heuristics,
+but does NOT test real generated text. To properly calibrate your
+personas, you MUST complete the interactive validation phase.
+
+NEXT STEPS (REQUIRED):
+
+1. Review generated replies side-by-side with your actual emails:
+   python validate_personas.py --review
+
+2. Judge each mismatch: "Does this sound like me?"
+   python validate_personas.py --feedback <email_id> --sounds-like-me true
+   python validate_personas.py --feedback <email_id> --sounds-like-me false --notes "why"
+
+3. Get refinement suggestions based on your feedback:
+   python validate_personas.py --suggestions
+
+4. Apply refinements to persona_registry.json and re-validate
+
+This is the FINE-TUNING phase - critical for persona accuracy.
+""")
+    print(f"{'=' * 60}")
+    print("DO NOT PROCEED TO GENERATION UNTIL PHASE 2 IS COMPLETE")
+    print(f"{'=' * 60}\n")
 
     return True
 

@@ -26,6 +26,8 @@ from config import get_data_dir, get_path
 DATA_DIR = get_data_dir()
 PERSONA_REGISTRY_FILE = get_path("persona_registry.json")
 LINKEDIN_PERSONA_FILE = get_path("linkedin_persona.json")
+VALIDATION_FEEDBACK_FILE = get_path("validation_feedback.json")
+VALIDATION_REPORT_FILE = get_path("validation_report.json")
 SAMPLES_DIR = get_path("samples")
 
 
@@ -59,6 +61,43 @@ def load_linkedin_persona() -> Optional[Dict]:
 
     with open(LINKEDIN_PERSONA_FILE) as f:
         return json.load(f)
+
+
+def check_validation_complete() -> Dict:
+    """
+    Check if validation (both phases) is complete.
+
+    Returns:
+        Dict with 'phase1_complete', 'phase2_complete', 'score', 'feedback_count'
+    """
+    result = {
+        "phase1_complete": False,
+        "phase2_complete": False,
+        "score": None,
+        "feedback_count": 0
+    }
+
+    # Check Phase 1 (automatic validation)
+    if VALIDATION_REPORT_FILE.exists():
+        try:
+            with open(VALIDATION_REPORT_FILE) as f:
+                report = json.load(f)
+            result["phase1_complete"] = True
+            result["score"] = report.get("summary", {}).get("overall_score")
+        except (json.JSONDecodeError, IOError):
+            pass
+
+    # Check Phase 2 (interactive validation)
+    if VALIDATION_FEEDBACK_FILE.exists():
+        try:
+            with open(VALIDATION_FEEDBACK_FILE) as f:
+                feedback = json.load(f)
+            result["feedback_count"] = len(feedback.get("feedback", []))
+            result["phase2_complete"] = feedback.get("interactive_complete", False)
+        except (json.JSONDecodeError, IOError):
+            pass
+
+    return result
 
 
 def load_sample_emails(persona_name: str, limit: int = 3) -> List[Dict]:
@@ -420,6 +459,8 @@ Examples:
     parser.add_argument("--output", type=str, default=str(Path.home() / "Documents"),
                         help="Output directory (default: ~/Documents)")
     parser.add_argument("--status", action="store_true", help="Show available data")
+    parser.add_argument("--skip-validation-check", action="store_true",
+                        help="Skip interactive validation check (not recommended)")
 
     args = parser.parse_args()
 
@@ -440,6 +481,46 @@ Examples:
         return
 
     output_dir = Path(args.output)
+
+    # Check validation status (unless skipped)
+    if not args.skip_validation_check:
+        validation = check_validation_complete()
+
+        if not validation["phase1_complete"]:
+            print(f"\n{'═' * 60}")
+            print("❌ VALIDATION NOT COMPLETE")
+            print(f"{'═' * 60}")
+            print("\nYou must run validation before generating the skill.")
+            print("\nRun:")
+            print("  1. python prepare_validation.py")
+            print("  2. python validate_personas.py --auto")
+            print("  3. python validate_personas.py --review  (interactive)")
+            print(f"{'═' * 60}\n")
+            sys.exit(1)
+
+        if not validation["phase2_complete"]:
+            print(f"\n{'═' * 60}")
+            print("⚠️  INTERACTIVE VALIDATION NOT COMPLETE")
+            print(f"{'═' * 60}")
+            print(f"""
+Phase 1 (automatic) validation is complete with score: {validation['score']}/100
+But interactive validation (Phase 2) was not completed.
+
+Without interactive validation:
+  • Personas may not sound like you in practice
+  • You'll spend more time fixing issues post-generation
+  • Lower quality output
+
+RECOMMENDED: Complete interactive validation first:
+  python validate_personas.py --review
+  python validate_personas.py --feedback <email_id> --sounds-like-me true/false
+  python validate_personas.py --suggestions
+
+TO PROCEED ANYWAY (not recommended):
+  python generate_skill.py --name {user_name} --skip-validation-check
+""")
+            print(f"{'═' * 60}\n")
+            sys.exit(1)
 
     # Check if we have any data
     personas = load_email_personas()
