@@ -489,21 +489,21 @@ The skill automatically detects your API key from:
 
 Get your key at: https://openrouter.ai/keys
 
-#### Model Selection
+#### Model Selection (REQUIRED)
 
-Choose which LLM model to use for generating validation replies:
+**You MUST select a model before running LLM validation.** Models can become unavailable or outdated, so explicit selection ensures you're using a working model.
 
 ```bash
-# List available models (last 6 months only)
+# 1. List available models (fetches from OpenRouter, last 6 months)
 venv/bin/python3 validate_personas.py --list-models
 
-# Set your preferred model
+# 2. Select your preferred model (REQUIRED before --auto or --review)
 venv/bin/python3 validate_personas.py --set-model 'anthropic/claude-sonnet-4-20250514'
 ```
 
 The script shows models from major providers (Anthropic, OpenAI, Google, Meta, Mistral) with pricing and context length info. Your selection is saved to `openrouter_model.json`.
 
-Default model: `anthropic/claude-sonnet-4-20250514`
+**Note:** Validation will not proceed until you've explicitly selected a model. This prevents failures from outdated default models.
 
 Without OpenRouter, validation falls back to template-based generation (less accurate).
 

@@ -265,6 +265,29 @@ def _save_selected_model(model_id: str):
         json.dump(config, f, indent=2)
 
 
+def check_model_configured() -> bool:
+    """
+    Check if a model has been explicitly configured by the user.
+
+    Returns False if:
+    - Config file doesn't exist
+    - Config file is empty or invalid
+    - Model field is missing
+
+    This ensures users explicitly select a model rather than
+    relying on potentially outdated defaults.
+    """
+    if not OPENROUTER_MODEL_CONFIG_FILE.exists():
+        return False
+
+    try:
+        with open(OPENROUTER_MODEL_CONFIG_FILE) as f:
+            config = json.load(f)
+        return bool(config.get('model'))
+    except (json.JSONDecodeError, IOError):
+        return False
+
+
 def fetch_openrouter_models(months_back: int = 6) -> List[Dict]:
     """
     Fetch available models from OpenRouter API.
@@ -1428,6 +1451,30 @@ def run_auto_validation() -> bool:
 
     if not pairs:
         print("No validation pairs found. Run prepare_validation.py first.")
+        return False
+
+    # Check if model selection is required (when OpenRouter API is available)
+    if _check_llm_available() and not check_model_configured():
+        print(f"\n{'═' * 60}")
+        print("⚠️  MODEL SELECTION REQUIRED")
+        print(f"{'═' * 60}")
+        print("""
+OpenRouter API key found, but no model has been selected.
+
+Models can become unavailable or outdated. You must explicitly
+select a model before running LLM-based validation.
+
+REQUIRED STEPS:
+
+1. List available models (fetches from OpenRouter):
+   python validate_personas.py --list-models
+
+2. Select your preferred model:
+   python validate_personas.py --set-model 'anthropic/claude-sonnet-4-20250514'
+
+Then re-run validation.
+""")
+        print(f"{'═' * 60}\n")
         return False
 
     print(f"Running blind validation...")
