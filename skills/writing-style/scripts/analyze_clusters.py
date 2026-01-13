@@ -38,6 +38,11 @@ from email_analysis_v2 import (
     select_example_bank,
     get_v2_schema_template
 )
+from json_repair import (
+    safe_parse_json,
+    validate_analysis_schema,
+    get_retry_prompt
+)
 
 # Calibration reference (static path)
 CALIBRATION_FILE = Path(__file__).parent.parent / "references" / "calibration.md"
@@ -71,9 +76,18 @@ MODEL_PRICING = {
     "anthropic/claude-sonnet-4-20250514": {"input": 3.0, "output": 15.0},
     "anthropic/claude-3-5-haiku-20241022": {"input": 0.80, "output": 4.0},
     "anthropic/claude-3-5-sonnet-20241022": {"input": 3.0, "output": 15.0},
+    "anthropic/claude-3-haiku-20240307": {"input": 0.25, "output": 1.25},
     "openai/gpt-4o": {"input": 2.5, "output": 10.0},
     "openai/gpt-4o-mini": {"input": 0.15, "output": 0.60},
+    "google/gemini-flash-1.5": {"input": 0.075, "output": 0.30},
     "default": {"input": 5.0, "output": 15.0}
+}
+
+# Recommended models by use case
+RECOMMENDED_MODELS = {
+    "cost_effective": "anthropic/claude-3-5-haiku-20241022",  # Best balance of quality/cost
+    "budget": "openai/gpt-4o-mini",  # Cheapest, good for testing
+    "quality": "anthropic/claude-sonnet-4-20250514",  # Highest quality
 }
 
 # Default max emails per batch (to stay within token limits)
@@ -508,46 +522,57 @@ def analyze_single_cluster(
     """
     Analyze a single cluster via OpenRouter API.
 
+    Uses robust JSON parsing with repair strategies and retry with
+    improved prompts on failure.
+
     Returns:
         (cluster_id, parsed_result_dict, error_message_or_none)
     """
+    current_prompt = prompt
+    last_error = None
+
     for attempt in range(max_retries + 1):
         try:
-            content = _call_openrouter_api(prompt, api_key, model)
+            content = _call_openrouter_api(current_prompt, api_key, model)
 
-            # Clean up potential markdown code fences
-            content = content.strip()
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.startswith("```"):
-                content = content[3:]
-            if content.endswith("```"):
-                content = content[:-3]
-            content = content.strip()
+            # Use robust JSON parsing with repair
+            parse_result = safe_parse_json(content)
 
-            # Parse JSON
-            try:
-                result = json.loads(content)
-                return (cluster_id, result, None)
-            except json.JSONDecodeError as e:
-                if attempt < max_retries:
-                    time.sleep(2 ** attempt)  # Exponential backoff
-                    continue
-                return (cluster_id, None, f"JSON parse error: {str(e)}")
+            if parse_result['success']:
+                # Validate schema
+                is_valid, validation_error = validate_analysis_schema(parse_result['data'])
+                if is_valid:
+                    if parse_result['repair_applied']:
+                        print(f"    (Cluster {cluster_id}: JSON repaired successfully)")
+                    return (cluster_id, parse_result['data'], None)
+                else:
+                    last_error = f"Schema validation failed: {validation_error}"
+            else:
+                last_error = parse_result['error']
+
+            # If we have more retries, modify prompt to emphasize JSON-only output
+            if attempt < max_retries:
+                current_prompt = get_retry_prompt(prompt, last_error)
+                time.sleep(2 ** attempt)  # Exponential backoff
+                continue
+
+            return (cluster_id, None, f"JSON parse error after {max_retries + 1} attempts: {last_error}")
 
         except requests.exceptions.Timeout:
+            last_error = "API timeout"
             if attempt < max_retries:
                 time.sleep(2 ** attempt)
                 continue
-            return (cluster_id, None, "API timeout after retries")
+            return (cluster_id, None, f"API timeout after {max_retries + 1} attempts")
 
         except Exception as e:
+            last_error = str(e)
             if attempt < max_retries:
                 time.sleep(2 ** attempt)
                 continue
-            return (cluster_id, None, str(e))
+            return (cluster_id, None, f"Error after {max_retries + 1} attempts: {last_error}")
 
-    return (cluster_id, None, "Max retries exceeded")
+    return (cluster_id, None, f"Max retries exceeded: {last_error}")
 
 
 def merge_v2_analysis(
@@ -1013,6 +1038,8 @@ def main():
                        help="Discard draft and reset")
     parser.add_argument("--status", action="store_true",
                        help="Show current analysis status")
+    parser.add_argument("--recommend", action="store_true",
+                       help="Show recommended models for different use cases")
 
     # Configuration
     parser.add_argument("--model", type=str,
@@ -1025,6 +1052,38 @@ def main():
                        help=f"Max emails per API call (default: {DEFAULT_MAX_EMAILS_PER_BATCH})")
 
     args = parser.parse_args()
+
+    # Handle --recommend
+    if args.recommend:
+        print("\n" + "=" * 60)
+        print("MODEL RECOMMENDATIONS")
+        print("=" * 60)
+        print("\nChoose based on your priorities:\n")
+        print("  COST-EFFECTIVE (Recommended):")
+        print(f"    {RECOMMENDED_MODELS['cost_effective']}")
+        pricing = MODEL_PRICING.get(RECOMMENDED_MODELS['cost_effective'], {})
+        print(f"    ${pricing.get('input', '?')}/1M input, ${pricing.get('output', '?')}/1M output")
+        print("    Best balance of quality and cost for persona analysis.")
+        print()
+        print("  BUDGET (Testing/Development):")
+        print(f"    {RECOMMENDED_MODELS['budget']}")
+        pricing = MODEL_PRICING.get(RECOMMENDED_MODELS['budget'], {})
+        print(f"    ${pricing.get('input', '?')}/1M input, ${pricing.get('output', '?')}/1M output")
+        print("    Cheapest option, good for testing workflow.")
+        print()
+        print("  QUALITY (Best Results):")
+        print(f"    {RECOMMENDED_MODELS['quality']}")
+        pricing = MODEL_PRICING.get(RECOMMENDED_MODELS['quality'], {})
+        print(f"    ${pricing.get('input', '?')}/1M input, ${pricing.get('output', '?')}/1M output")
+        print("    Highest quality analysis, recommended for final runs.")
+        print()
+        print("To set a model:")
+        print("  python validate_personas.py --set-model 'anthropic/claude-3-5-haiku-20241022'")
+        print()
+        print("Or override per-run:")
+        print("  python analyze_clusters.py --model 'openai/gpt-4o-mini'")
+        print("=" * 60)
+        return 0
 
     # Handle status
     if args.status:
@@ -1100,14 +1159,33 @@ def main():
     if args.estimate:
         estimate = estimate_analysis_cost(all_batches, model)
         print("\nCOST ESTIMATE")
-        print("=" * 40)
-        print(f"Model: {model}")
+        print("=" * 60)
+        print(f"Selected model: {model}")
         print(f"Input tokens: {estimate['total_input_tokens']:,}")
         print(f"Output tokens: {estimate['total_output_tokens']:,}")
         print(f"Estimated cost: ${estimate['estimated_cost_usd']:.4f}")
         print("\nPer cluster:")
         for pc in estimate['per_cluster']:
             print(f"  Cluster {pc['cluster_id']}: {pc['email_count']} emails, ${pc['estimated_cost']:.4f}")
+
+        # Show comparison with other models
+        print("\n" + "-" * 60)
+        print("COST COMPARISON (same workload, different models):")
+        print("-" * 60)
+        comparison_models = [
+            ("anthropic/claude-3-5-haiku-20241022", "Haiku 3.5 (Recommended)"),
+            ("openai/gpt-4o-mini", "GPT-4o Mini (Budget)"),
+            ("anthropic/claude-sonnet-4-20250514", "Claude Sonnet 4.5"),
+        ]
+        for model_id, label in comparison_models:
+            alt_estimate = estimate_analysis_cost(all_batches, model_id)
+            marker = " <-- selected" if model_id == model else ""
+            marker = " <-- RECOMMENDED" if model_id == RECOMMENDED_MODELS['cost_effective'] and model != model_id else marker
+            print(f"  {label}: ${alt_estimate['estimated_cost_usd']:.4f}{marker}")
+
+        print("\nTo use a different model:")
+        print(f"  python analyze_clusters.py --model '{RECOMMENDED_MODELS['cost_effective']}'")
+        print("=" * 60)
         return 0
 
     # Handle dry-run

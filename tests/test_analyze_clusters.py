@@ -585,12 +585,10 @@ class TestErrorHandling(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
+            # Point to non-existent file
+            fake_config = tmp_path / "openrouter_model.json"
 
-            def mock_get_path(*subdirs):
-                return tmp_path / Path(*subdirs)
-
-            # No openrouter_model.json
-            with patch.object(config, 'get_path', side_effect=mock_get_path):
+            with patch.object(analyze_clusters, '_get_model_config_file', return_value=fake_config):
                 configured = analyze_clusters.check_model_configured()
 
             self.assertFalse(configured)
