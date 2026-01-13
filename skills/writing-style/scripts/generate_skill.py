@@ -237,10 +237,17 @@ When asked to write content:
 
 
 def generate_email_personas_md(personas: List[Dict]) -> str:
-    """Generate detailed email personas reference file."""
-    content = """# Email Personas - Detailed Profiles
+    """
+    Generate detailed email personas reference file with full v2 JSON profiles embedded.
 
-This file contains complete persona definitions with tone vectors, structural patterns, and example emails.
+    V2 Enhanced: Embeds complete JSON profile as code block for LLM consumption,
+    plus human-readable quick reference.
+    """
+    content = """# Email Personas - V2 Detailed Profiles
+
+This file contains complete persona definitions with voice fingerprints, relationship calibration, guardrails, and example emails.
+
+**Schema Version:** 2.0
 
 ---
 
@@ -249,38 +256,103 @@ This file contains complete persona definitions with tone vectors, structural pa
     for i, persona in enumerate(personas, 1):
         name = persona.get('name', f'Persona {i}')
         desc = persona.get('description', 'No description')
-        chars = persona.get('characteristics', {})
         sample_count = persona.get('sample_count', 0)
 
         content += f"## {i}. {name}\n\n"
         content += f"**When to use:** {desc}\n\n"
         content += f"**Sample count:** {sample_count} emails analyzed\n\n"
 
-        content += "### Tone Vectors\n\n"
-        content += "| Dimension | Score (1-10) |\n"
-        content += "|-----------|-------------|\n"
+        # Check if v2 schema (has voice_fingerprint)
+        if 'voice_fingerprint' in persona:
+            # V2 Format: Embed full JSON profile
+            content += "### Full Profile (v2.0)\n\n"
+            content += "```json\n"
 
-        for key in ['formality', 'warmth', 'authority', 'directness']:
-            val = chars.get(key, 'N/A')
-            content += f"| {key.title()} | {val} |\n"
+            # Create clean profile for display (remove very long example bodies)
+            display_profile = json.loads(json.dumps(persona))  # Deep copy
 
-        content += "\n### Structural Patterns\n\n"
-        content += f"- **Typical Greeting:** {chars.get('typical_greeting', 'N/A')}\n"
-        content += f"- **Typical Closing:** {chars.get('typical_closing', 'N/A')}\n"
-        content += f"- **Uses Contractions:** {chars.get('uses_contractions', 'N/A')}\n"
+            # Truncate example bodies to save space
+            if 'example_bank' in display_profile and 'examples' in display_profile['example_bank']:
+                for ex in display_profile['example_bank']['examples']:
+                    if 'body' in ex and len(ex['body']) > 500:
+                        ex['body'] = ex['body'][:500] + '...[truncated]'
 
-        if chars.get('tone'):
-            content += f"- **Tone Descriptors:** {', '.join(chars.get('tone', []))}\n"
+            content += json.dumps(display_profile, indent=2)
+            content += "\n```\n\n"
+
+            # Quick reference section (human-readable summary)
+            content += "### Quick Reference\n\n"
+
+            vf = persona.get('voice_fingerprint', {})
+
+            # Formality
+            formality = vf.get('formality', {})
+            if isinstance(formality, dict):
+                level = formality.get('level', 'N/A')
+                instruction = formality.get('instruction', '')
+                content += f"- **Formality:** {level}/10 - {instruction[:100]}{'...' if len(instruction) > 100 else ''}\n"
+            else:
+                content += f"- **Formality:** {formality}/10\n"
+
+            # Tone markers
+            tone_markers = vf.get('tone_markers', {})
+            for key in ['warmth', 'authority', 'directness']:
+                marker = tone_markers.get(key, {})
+                if isinstance(marker, dict):
+                    level = marker.get('level', 'N/A')
+                    instruction = marker.get('instruction', '')
+                    content += f"- **{key.title()}:** {level}/10 - {instruction[:80]}{'...' if len(instruction) > 80 else ''}\n"
+                elif marker:
+                    content += f"- **{key.title()}:** {marker}/10\n"
+
+            # Opening/closing patterns
+            opening = persona.get('opening_dna', {})
+            if opening.get('primary_style'):
+                content += f"- **Primary Greeting:** {opening['primary_style']}\n"
+
+            closing = persona.get('closing_dna', {})
+            if closing.get('primary_style'):
+                content += f"- **Primary Sign-off:** {closing['primary_style']}\n"
+
+            # Guardrails summary
+            guardrails = persona.get('guardrails', {})
+            if guardrails.get('never_do'):
+                content += f"- **Never Do:** {', '.join(guardrails['never_do'][:3])}\n"
+
+            content += "\n"
+
+        else:
+            # V1 Fallback: Original format
+            chars = persona.get('characteristics', {})
+
+            content += "### Tone Vectors\n\n"
+            content += "| Dimension | Score (1-10) |\n"
+            content += "|-----------|-------------|\n"
+
+            for key in ['formality', 'warmth', 'authority', 'directness']:
+                val = chars.get(key, 'N/A')
+                content += f"| {key.title()} | {val} |\n"
+
+            content += "\n### Structural Patterns\n\n"
+            content += f"- **Typical Greeting:** {chars.get('typical_greeting', 'N/A')}\n"
+            content += f"- **Typical Closing:** {chars.get('typical_closing', 'N/A')}\n"
+            content += f"- **Uses Contractions:** {chars.get('uses_contractions', 'N/A')}\n"
+
+            if chars.get('tone'):
+                content += f"- **Tone Descriptors:** {', '.join(chars.get('tone', []))}\n"
+
+            content += "\n"
 
         # Load sample emails for this persona
         samples = load_sample_emails(name, limit=2)
         if samples:
-            content += "\n### Example Emails\n\n"
+            content += "### Example Emails\n\n"
             for j, sample in enumerate(samples, 1):
                 content += f"**Example {j}:**\n"
                 if sample.get('subject'):
                     content += f"- Subject: {sample['subject']}\n"
-                content += f"```\n{sample.get('body', '')[:500]}{'...' if len(sample.get('body', '')) > 500 else ''}\n```\n\n"
+                body = sample.get('body', '')
+                content += f"```\n{body[:500]}{'...' if len(body) > 500 else ''}\n```\n\n"
 
         content += "---\n\n"
 

@@ -26,6 +26,7 @@ import base64
 
 # Directories
 from config import get_data_dir, get_path
+from email_analysis_v2 import detect_recipient_seniority
 
 DATA_DIR = get_data_dir()
 FILTERED_DIR = get_path("filtered_samples")
@@ -334,27 +335,39 @@ def enrich_email(filtered_data: dict, user_domain: str) -> Dict:
     body = extract_body(email_data)
     structure = analyze_structure(body)
     
+    # Detect recipient seniority for relationship calibration
+    audience = classify_audience(recipient_domains, user_domain)
+    temp_enrichment = {
+        'audience': audience,
+        'recipient_signatures': []  # Placeholder - could be populated from email parsing
+    }
+    seniority = detect_recipient_seniority({
+        'original_data': email_data,
+        'enrichment': temp_enrichment
+    })
+
     enrichment = {
         # Recipient info
         'recipient_count': len(all_recipients),
         'recipient_type': classify_recipient_type(len(all_recipients)),
-        'audience': classify_audience(recipient_domains, user_domain),
+        'audience': audience,
         'recipient_domains': list(set(recipient_domains)),
+        'recipient_seniority': seniority,  # NEW: v2 seniority detection
         'has_cc': len(cc_emails) > 0,
-        
+
         # Thread info
         'thread_position': thread_position,
         'thread_depth': thread_depth,
-        
+
         # Attachments
         'has_attachments': has_attachments(email_data),
-        
+
         # Time context
         'time_of_day': time_context['time_of_day'],
         'day_of_week': time_context['day_of_week'],
         'is_weekend': time_context['is_weekend'],
         'timestamp': time_context['timestamp'],
-        
+
         # Structure
         'char_count': structure['char_count'],
         'paragraph_count': structure['paragraph_count'],
@@ -403,6 +416,7 @@ def process_emails(dry_run: bool = False) -> Dict:
     stats = {
         'recipient_types': Counter(),
         'audiences': Counter(),
+        'recipient_seniorities': Counter(),  # NEW: v2 seniority tracking
         'thread_positions': Counter(),
         'times_of_day': Counter(),
         'days_of_week': Counter()
@@ -423,6 +437,7 @@ def process_emails(dry_run: bool = False) -> Dict:
         # Update stats
         stats['recipient_types'][e['recipient_type']] += 1
         stats['audiences'][e['audience']] += 1
+        stats['recipient_seniorities'][e.get('recipient_seniority', 'unknown')] += 1
         stats['thread_positions'][e['thread_position']] += 1
         stats['times_of_day'][e['time_of_day']] += 1
         if e['day_of_week'] != 'unknown':
@@ -448,6 +463,7 @@ def process_emails(dry_run: bool = False) -> Dict:
         'statistics': {
             'recipient_types': dict(stats['recipient_types']),
             'audiences': dict(stats['audiences']),
+            'recipient_seniorities': dict(stats['recipient_seniorities']),
             'thread_positions': dict(stats['thread_positions']),
             'times_of_day': dict(stats['times_of_day']),
             'days_of_week': dict(stats['days_of_week'])

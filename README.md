@@ -151,12 +151,38 @@ Use `BOOTSTRAP.md` as your initial user prompt to check environment status and b
           └── /references/      # Reference data (progressive disclosure)
               ├── calibration.md
               ├── analysis_schema.md
+              ├── email_persona_schema_v2.md   # v2.0 schema documentation
               └── output_template.md
 ```
 
 ---
 
-## 🎯 Current Version: v3.4
+## 🎯 Current Version: v3.6
+
+### What's New in v3.6 (2026-01-12)
+
+**Email Persona Schema v2.0**
+
+Comprehensive upgrade from lightweight format (4 tone vectors) to full voice fingerprint:
+
+- ✅ **Hybrid Analysis** - Deterministic Python for statistics + LLM for semantic fields
+- ✅ **Voice Fingerprint** - Formality, rhythm, mechanics, lexicon, tone markers
+- ✅ **Numeric + Prose** - Every 1-10 score has sibling `_instruction` explaining what it means
+- ✅ **Seniority Detection** - Identifies executive/peer/report/external_client/candidate recipients
+- ✅ **Email Type Inference** - Dynamically classifies from cluster patterns (status_update, request, outreach, etc.)
+- ✅ **Example Bank** - Selects top 3-5 emails with ≥0.85 confidence per persona
+- ✅ **Full JSON Embedding** - Complete v2 profiles embedded in `email_personas.md`
+- ✅ **Backward Compatible** - v1 batches auto-migrate to v2
+
+**New Files:**
+- `scripts/email_analysis_v2.py` - Deterministic analysis (rhythm, formatting, greetings, mechanics)
+- `references/email_persona_schema_v2.md` - Complete schema documentation
+- `tests/test_email_schema_v2.py` - 53 TDD tests for v2 functionality
+
+**Impact:**
+- Richer persona profiles with actionable writing instructions
+- Token-efficient: statistics computed in Python, not by LLM
+- Relationship-aware calibration by recipient seniority
 
 ### What's New in v3.4 (2026-01-09)
 
@@ -177,7 +203,7 @@ Use `BOOTSTRAP.md` as your initial user prompt to check environment status and b
 - Data-driven refinement suggestions
 - Clear architectural reasoning for ML vs LLM choices
 
-### What's New in v3.3 (2025-01-07)
+### What's New in v3.3 (2026-01-07)
 
 **LinkedIn Pipeline Enhancement: Rich Data Capture**
 
@@ -394,10 +420,11 @@ skills/writing-style/
 
 ### ML Processing
 - `filter_*.py` - Quality filtering (rule-based)
-- `enrich_emails.py` - Metadata addition (heuristics)
+- `enrich_emails.py` - Metadata addition + seniority detection (heuristics)
 - `embed_emails.py` - Semantic embeddings (sentence-transformers)
 - `cluster_emails.py` - Email clustering (HDBSCAN/K-Means)
 - `cluster_linkedin.py` - LinkedIn persona extraction (statistical ML)
+- `email_analysis_v2.py` - Deterministic analysis (rhythm, formatting, greetings, mechanics)
 
 ### LLM-Assisted Analysis
 - `prepare_batch.py` - Format clusters for LLM persona analysis
@@ -449,4 +476,4 @@ MIT License
 
 ---
 
-**Last Updated:** 2026-01-09 (v3.4 - Hybrid ML/LLM Architecture + Blind Validation)
+**Last Updated:** 2026-01-12 (v3.6 - Email Persona Schema v2.0)

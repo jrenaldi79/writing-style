@@ -1,5 +1,150 @@
 # Changelog
 
+## [3.6.0] - 2026-01-12
+
+### Email Persona Schema v2.0
+
+**New Feature:** Comprehensive upgrade from lightweight persona format (4 tone vectors, basic patterns) to a full voice fingerprint schema with relationship calibration, guardrails, and embedded examples.
+
+**Problem Solved:**
+- V1 personas lacked actionable writing instructions (just numeric scores)
+- No relationship-aware calibration (same tone for CEO vs teammate)
+- Statistics computed by LLM (expensive, inconsistent)
+- No example bank for reference
+
+**Solution:**
+- Hybrid analysis: deterministic Python for statistics + LLM for semantic fields
+- Every numeric score (1-10) has sibling `_instruction` string explaining what it means
+- Seniority detection: executive/peer/report/external_client/candidate
+- Email type inference from cluster patterns
+- Example bank: top 3-5 emails with ≥0.85 confidence
+- Full JSON profiles embedded in `email_personas.md`
+
+### Added
+
+#### New Script
+- `scripts/email_analysis_v2.py` (~400 lines)
+  - `analyze_rhythm()` - sentence length stats, paragraphing
+  - `analyze_formatting()` - bullets, numbering detection
+  - `extract_greeting_distribution()` - greeting patterns
+  - `extract_closing_distribution()` - sign-off patterns
+  - `analyze_subject_lines()` - length, casing, prefixes
+  - `analyze_mechanics()` - contractions, punctuation, em-dash
+  - `detect_recipient_seniority()` - executive/peer/report detection
+  - `infer_email_types()` - cluster-based type classification
+  - `compute_deterministic_metrics()` - master aggregator
+  - `detect_schema_version()` - v1/v2 detection
+  - `migrate_v1_to_v2()` - v1→v2 migration
+
+#### New Documentation
+- `references/email_persona_schema_v2.md` - Complete v2 schema specification
+
+#### Test Suite
+- `tests/test_email_schema_v2.py` (53 tests)
+  - Rhythm analysis tests
+  - Formatting detection tests
+  - Greeting/closing extraction tests
+  - Subject line pattern tests
+  - Mechanics analysis tests
+  - Seniority detection tests
+  - Email type inference tests
+  - Schema validation tests
+  - Backward compatibility tests
+  - Example bank selection tests
+
+### Changed
+- `scripts/enrich_emails.py`: Added `recipient_seniority` field detection
+- `scripts/analyze_clusters.py`: Enhanced prompt for v2 schema, added `merge_v2_analysis()`
+- `scripts/generate_skill.py`: Embeds full JSON profiles in `email_personas.md`
+- `scripts/ingest.py`: Schema version detection, v1→v2 auto-migration
+
+### Technical Details
+
+**Hybrid Analysis Approach:**
+| Field Type | Computed By | Examples |
+|------------|-------------|----------|
+| Statistics | Python (deterministic) | sentence length, bullet rate, greeting distribution |
+| Semantic | LLM | tone instructions, argumentation style, guardrails |
+
+**Token Efficiency:**
+- Deterministic metrics computed in Python (saves LLM tokens)
+- Pre-computed metrics included in prompt (LLM doesn't recalculate)
+- LLM focuses only on semantic fields
+- Net impact: approximately neutral (larger output, smaller computation)
+
+---
+
+## [3.5.0] - 2026-01-09
+
+### Parallel Cluster Analysis
+
+**New Feature:** Analyze all email clusters simultaneously using external LLM API calls, replacing the sequential workflow where the calling LLM processes one cluster at a time.
+
+**Problem Solved:**
+- Sequential cluster analysis was slow (LLM processes one cluster at a time)
+- No automatic persona deduplication across clusters
+- Required manual coordination between prepare_batch.py and ingest.py calls
+
+**Solution:**
+- New `analyze_clusters.py` script manages parallel LLM calls via OpenRouter API
+- ThreadPoolExecutor for unlimited parallelism (all clusters analyzed simultaneously)
+- Automatic persona merging using embedding similarity (threshold 0.85)
+- Draft/approval workflow for batch review before ingestion
+
+### Added
+
+#### New Script
+- `scripts/analyze_clusters.py` (~500 lines)
+  - `--estimate`: Show cost estimate without running
+  - `--dry-run`: Simulate without API calls
+  - `--review`: Show draft results for review
+  - `--approve`: Approve and ingest all batches
+  - `--reject`: Discard draft
+  - `--model MODEL`: Override default model
+  - `--similarity-threshold`: Persona merge threshold (default 0.85)
+
+#### Test Suite
+- `tests/test_analyze_clusters.py` (26 tests)
+  - Preparation phase tests
+  - Cost estimation tests
+  - Parallel execution tests
+  - Persona merging tests
+  - Approval workflow tests
+  - Error handling tests
+
+### Changed
+- `SKILL.md`: Added "Alternative: Parallel Cluster Analysis (v3.5+)" section
+
+### Technical Details
+
+**Patterns Reused:**
+- OpenRouter API calls from `validate_personas.py`
+- ThreadPoolExecutor from `fetch_linkedin_mcp.py`
+- SentenceTransformer embeddings from `embed_emails.py`
+
+**Workflow:**
+```bash
+# Estimate cost
+python analyze_clusters.py --estimate
+
+# Run parallel analysis
+python analyze_clusters.py
+
+# Review results
+python analyze_clusters.py --review
+
+# Approve and ingest
+python analyze_clusters.py --approve
+```
+
+### Benefits
+- ~5-10x faster for multiple clusters
+- Automatic persona deduplication
+- Single approval step for all clusters
+- Cost estimation before running
+
+---
+
 ## [3.4.0] - 2026-01-08
 
 ### Replaced Script-Based Validation with Inline User Feedback

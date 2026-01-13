@@ -1,4 +1,4 @@
-# Project: Writing Style Clone (v3.3)
+# Project: Writing Style Clone (v3.6)
 
 > **⚠️ SYNC MANDATE**: `claude.md` and `agents.md` are duplicate manifests used by different AI coding agents. Any change to project logic, directory structure, or skill architecture **MUST** result in an update to **BOTH** files simultaneously.
 
@@ -13,6 +13,8 @@
 - **State:** Persistent tracking via `state_manager.py` into `state.json`.
 - **MCP Pattern:** Scripts use internal `MCPClient` for token-efficient tool execution.
 - **Validation:** Blind testing against 15% held-out emails for persona accuracy.
+- **v3.6 Analysis:** Hybrid approach - deterministic metrics (Python) + semantic fields (LLM via OpenRouter).
+- **v3.6 Schema:** Email persona v2.0 with voice fingerprint, relationship calibration, instruction siblings.
 
 ## Directory Structure
 ```text
@@ -26,15 +28,24 @@
 ├── SYSTEM_PROMPT.md            # DEPRECATED - see system_prompt.md
 ├── requirements.txt            # Python dependencies
 ├── index.html                  # User guide & dashboard
+├── package_skill.sh            # NEW v3.6: Skill packaging automation script
+├── PACKAGING_GUIDE.md          # NEW v3.6: Distribution & installation guide
 ├── skills/                     # Agent Skills Specification root
 │   └── writing-style/
 │       ├── SKILL.md            # Skill entry point & workflow
 │       ├── references/         # Progressive disclosure docs
 │       │   ├── analysis_schema.md
+│       │   ├── architecture.md             # NEW v3.6: System design & best practices
 │       │   ├── batch_schema.md
 │       │   ├── calibration.md
+│       │   ├── data_schemas.md             # NEW v3.6: All schema specifications
+│       │   ├── email_persona_schema_v2.md
+│       │   ├── email_workflow.md           # NEW v3.6: Email pipeline detailed workflow
 │       │   ├── linkedin_persona_schema_v2.md
-│       │   └── output_template.md
+│       │   ├── linkedin_workflow.md        # NEW v3.6: LinkedIn pipeline workflow
+│       │   ├── output_template.md
+│       │   ├── script_guide.md             # NEW v3.6: Complete script reference
+│       │   └── troubleshooting.md          # NEW v3.6: Common issues & solutions
 │       └── scripts/            # Core Python logic
 │           ├── analysis_utils.py
 │           ├── api_keys.py
@@ -42,6 +53,7 @@
 │           ├── config.py
 │           ├── cluster_linkedin.py
 │           ├── embed_emails.py
+│           ├── email_analysis_v2.py
 │           ├── enrich_emails.py
 │           ├── fetch_emails.py
 │           ├── fetch_linkedin_mcp.py
@@ -260,9 +272,44 @@ cd tests && ../venv/bin/python3 run_tests.py
 | Any script | 500 lines | Consider splitting |
 | Any function | 50 lines | Break into smaller functions |
 
+### Documentation Quality Standards
+
+| Entity | Max Lines | Action If Exceeded |
+|--------|-----------|-------------------|
+| SKILL.md | 500 lines | **MANDATORY**: Split into reference files |
+| Reference files | 1000 lines | Consider splitting further |
+| No duplication | - | Information in ONE place only |
+
+**SKILL.md Compliance Rules:**
+
+1. **Progressive Disclosure Required:**
+   - SKILL.md: Overview + navigation (max 500 lines)
+   - `references/`: Detailed workflows and schemas
+
+2. **No Schema Duplication:**
+   - Schemas documented ONLY in `references/*_schema*.md`
+   - SKILL.md: Brief summary + link
+
+3. **Valid Frontmatter Only:**
+   - Allowed fields: `name`, `description`, `compatibility`, `license`, `metadata`
+   - No custom fields (e.g., `triggers`)
+
 ### Before Committing
 
 1. ✅ Run all tests: `cd tests && ../venv/bin/python3 run_tests.py`
 2. ✅ Check no regressions in existing functionality
-3. ✅ Update CLAUDE.md and agents.md if architecture changed
-4. ✅ Update SKILL.md if workflow changed
+3. ✅ Validate documentation compliance:
+   ```bash
+   # Check SKILL.md size
+   [ $(wc -l < skills/writing-style/SKILL.md) -le 500 ] || echo "FAIL: SKILL.md exceeds 500 lines"
+
+   # Check for invalid frontmatter
+   ! grep -A 20 "^---$" skills/writing-style/SKILL.md | grep -q "^triggers:" || echo "FAIL: Invalid triggers field"
+
+   # Check for schema duplication
+   ! (grep -q "voice_fingerprint" skills/writing-style/SKILL.md && \
+      grep -q "voice_fingerprint" skills/writing-style/references/email_persona_schema_v2.md) || \
+   echo "FAIL: Schema duplication detected"
+   ```
+4. ✅ Update claude.md and agents.md if architecture changed (SYNC MANDATE)
+5. ✅ Update SKILL.md if workflow changed (keep under 500 lines)

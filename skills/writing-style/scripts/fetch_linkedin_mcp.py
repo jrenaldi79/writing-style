@@ -390,6 +390,173 @@ def extract_profile_metadata(content, profile_url):
     }
 
 
+# Stopwords for keyword extraction
+KEYWORD_STOPWORDS = {
+    'the', 'and', 'or', 'at', 'in', 'for', 'to', 'a', 'an', 'is', 'are', 'was',
+    'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
+    'will', 'would', 'could', 'should', 'may', 'might', 'must', 'shall', 'can',
+    'of', 'on', 'with', 'as', 'by', 'from', 'about', 'into', 'through', 'during',
+    'before', 'after', 'above', 'below', 'between', 'under', 'again', 'further',
+    'then', 'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'each',
+    'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only',
+    'own', 'same', 'so', 'than', 'too', 'very', 'just', 'but', 'if', 'this',
+    'that', 'these', 'those', 'am', 'i', 'me', 'my', 'myself', 'we', 'our',
+    'ours', 'ourselves', 'you', 'your', 'yours', 'he', 'him', 'his', 'she', 'her',
+    'hers', 'it', 'its', 'they', 'them', 'their', 'theirs', 'what', 'which', 'who',
+    'whom', 'best', 'world', 'experienced', 'years', 'work', 'working', 'company'
+}
+
+
+def extract_profile_keywords(profile_data: dict, max_keywords: int = 5) -> list:
+    """
+    Extract search keywords from profile data for dynamic search queries.
+
+    Sources (priority order):
+    1. Headline (job title, role)
+    2. Company name
+    3. Bio/Summary (industry terms)
+
+    Args:
+        profile_data: Dict with headline, company, bio fields
+        max_keywords: Maximum keywords to return (default 5)
+
+    Returns:
+        list: Top keywords for search queries, deduplicated
+    """
+    if not profile_data:
+        return []
+
+    keywords = []
+
+    # 1. Parse headline for role keywords
+    headline = profile_data.get('headline', '') or ''
+    if headline:
+        # Split on common separators: |, -, @, at
+        parts = re.split(r'[|@\-]|\bat\b', headline, flags=re.IGNORECASE)
+        for part in parts:
+            # Extract individual words
+            words = re.findall(r'\b[A-Za-z]{3,}\b', part)
+            for word in words:
+                if word.lower() not in KEYWORD_STOPWORDS:
+                    keywords.append(word)
+
+    # 2. Add company name
+    company = profile_data.get('company', '') or ''
+    if company and company.lower() != 'unknown':
+        # Clean company name
+        company_clean = re.sub(r'[^\w\s]', '', company).strip()
+        if company_clean and company_clean.lower() not in KEYWORD_STOPWORDS:
+            keywords.append(company_clean)
+
+    # 3. Parse bio for industry terms
+    bio = profile_data.get('bio', '') or ''
+    if bio and bio.lower() != 'unknown':
+        # Extract longer words (likely industry terms)
+        bio_words = re.findall(r'\b[A-Za-z]{4,}\b', bio)
+        for word in bio_words:
+            if word.lower() not in KEYWORD_STOPWORDS:
+                keywords.append(word)
+
+    # Deduplicate while preserving order (case-insensitive)
+    seen = set()
+    unique_keywords = []
+    for kw in keywords:
+        if kw.lower() not in seen:
+            seen.add(kw.lower())
+            unique_keywords.append(kw)
+
+    return unique_keywords[:max_keywords]
+
+
+def build_search_patterns(username: str, name: str = None, profile_data: dict = None,
+                          use_dynamic_keywords: bool = True, year_range: int = 3) -> list:
+    """
+    Build comprehensive search patterns for LinkedIn post discovery.
+
+    Pattern categories:
+    1. Dynamic keyword patterns (from profile) or fallback
+    2. Date-range patterns (year-specific for historical discovery)
+    3. Base patterns (existing patterns as fallback)
+    4. Article patterns (using full name for /pulse/ URLs)
+
+    Args:
+        username: LinkedIn username/URL slug
+        name: Full name for article searches (optional)
+        profile_data: Profile dict for keyword extraction (optional)
+        use_dynamic_keywords: Whether to use profile keywords (default True)
+        year_range: Number of years to search back (default 3)
+
+    Returns:
+        list: Search query patterns
+    """
+    patterns = []
+    current_year = datetime.now().year
+
+    # 1. Dynamic keyword pattern (or fallback)
+    if use_dynamic_keywords and profile_data:
+        keywords = extract_profile_keywords(profile_data)
+        if keywords:
+            keyword_str = " OR ".join(keywords[:3])
+            patterns.append(f'"{username}" site:linkedin.com/posts {keyword_str}')
+        else:
+            # No keywords extracted, use fallback
+            patterns.append(f'"{username}" site:linkedin.com/posts product OR founder OR startup')
+    else:
+        # Fallback to hardcoded keywords
+        patterns.append(f'"{username}" site:linkedin.com/posts product OR founder OR startup')
+
+    # 2. Date-range patterns (year-specific)
+    if year_range > 0:
+        for year in range(current_year, current_year - year_range, -1):
+            patterns.append(f"site:linkedin.com/posts/{username} {year}")
+
+    # 3. Base patterns (existing - always include)
+    patterns.append(f"site:linkedin.com/posts/{username} activity")
+    patterns.append(f"site:linkedin.com/posts/{username}_")
+
+    # 4. Article search - USE FULL NAME if available
+    if name:
+        patterns.append(f"site:linkedin.com/pulse/ {name}")
+    # Also include username as fallback
+    patterns.append(f"site:linkedin.com/pulse/ {username}")
+
+    return patterns
+
+
+def validate_article_url(url: str, username: str, name: str = None) -> bool:
+    """
+    Validate that an article URL belongs to the target user.
+
+    Checks for either username or full name (slugified) in the URL.
+    LinkedIn articles use author name in URL, not username.
+
+    Args:
+        url: Article URL to validate
+        username: LinkedIn username/slug
+        name: Full name (optional, will be slugified for matching)
+
+    Returns:
+        bool: True if URL belongs to user
+    """
+    url_lower = url.lower()
+
+    # Check username match
+    if username.lower() in url_lower:
+        return True
+
+    # Check name match (slugified: "John Smith" -> "john-smith")
+    if name:
+        name_slug = name.lower().replace(' ', '-')
+        if name_slug in url_lower:
+            return True
+        # Also check without hyphens (some URLs use different formats)
+        name_no_space = name.lower().replace(' ', '')
+        if name_no_space in url_lower:
+            return True
+
+    return False
+
+
 def verify_profile(client, profile_url):
     """
     Verify LinkedIn profile with interactive user confirmation.
@@ -443,38 +610,57 @@ def verify_profile(client, profile_url):
     return profile_data
 
 
-def search_for_posts(client, username, limit=20):
+def search_for_posts(client, username, limit=20, profile_data=None,
+                     use_dynamic_keywords=True, year_range=3):
     """
     Search for LinkedIn posts using multiple strategies.
     Filter to only return posts from the target user.
-    
+
+    Args:
+        client: MCP client for search API calls
+        username: LinkedIn username/URL slug
+        limit: Maximum posts to return (default 20)
+        profile_data: Profile dict for dynamic keywords and name (optional)
+        use_dynamic_keywords: Use profile keywords instead of hardcoded (default True)
+        year_range: Years to search back for historical posts (default 3)
+
     Returns:
         list: Post URLs
     """
     print("\n" + "=" * 60)
     print("STEP 2: SEARCH FOR POSTS")
     print("=" * 60)
-    
+
     all_urls = []
-    
-    # Try multiple search patterns (posts + articles)
-    search_patterns = [
-        f"site:linkedin.com/posts/{username} activity",
-        f'"{username}" site:linkedin.com/posts product OR founder OR startup',
-        f"site:linkedin.com/posts/{username}_",
-        f"site:linkedin.com/pulse/ {username}",  # Long-form articles
-    ]
-    
+
+    # Extract name from profile_data for article searches
+    name = profile_data.get('name') if profile_data else None
+
+    # Build search patterns using new dynamic function
+    search_patterns = build_search_patterns(
+        username=username,
+        name=name,
+        profile_data=profile_data,
+        use_dynamic_keywords=use_dynamic_keywords,
+        year_range=year_range
+    )
+
+    print(f"\nUsing {len(search_patterns)} search patterns")
+    if profile_data and use_dynamic_keywords:
+        keywords = extract_profile_keywords(profile_data)
+        if keywords:
+            print(f"Dynamic keywords: {', '.join(keywords[:3])}")
+
     for i, query in enumerate(search_patterns, 1):
         print(f"\n🔍 Search {i}/{len(search_patterns)}: {query}")
-        
+
         try:
             result_json = client.call_tool("search_engine", {
                 "query": query,
                 "engine": "google"
             })
             result_data = json.loads(result_json)
-            
+
             # Extract post/article URLs - FILTER to exact username match
             for item in result_data.get("organic", []):
                 url = item.get("link", "")
@@ -482,23 +668,25 @@ def search_for_posts(client, username, limit=20):
                 # Posts: /posts/username/ or /posts/username_ with activity-
                 if (f"/posts/{username}/" in url or f"/posts/{username}_" in url) and "activity-" in url:
                     all_urls.append(url)
-                # Articles: /pulse/ with username in URL
-                elif "/pulse/" in url and username.lower() in url.lower():
+                # Articles: /pulse/ - use validate_article_url for name+username matching
+                elif "/pulse/" in url and validate_article_url(url, username, name):
                     all_urls.append(url)
-            
+
             found = len(all_urls)
             print(f"   → Found {found} posts so far")
-            
-            if len(all_urls) >= limit:
+
+            # Early termination when we have enough unique URLs
+            if len(set(all_urls)) >= limit * 1.5:
+                print("   → Sufficient URLs found, stopping search")
                 break
-                
+
         except Exception as e:
             print(f"   ⚠️  Search failed: {e}")
             continue
-    
+
     # Deduplicate and limit
     unique_urls = list(dict.fromkeys(all_urls))[:limit]
-    
+
     print(f"\n✅ Total unique post URLs: {len(unique_urls)}")
     return unique_urls
 
@@ -782,6 +970,23 @@ Examples:
         action="store_true",
         help="Skip MCP verification before fetching"
     )
+    parser.add_argument(
+        "--no-dynamic-keywords",
+        action="store_true",
+        help="Disable dynamic keyword extraction from profile (use hardcoded keywords)"
+    )
+    parser.add_argument(
+        "--year-range",
+        type=int,
+        default=3,
+        help="Number of years to search back for posts (default: 3)"
+    )
+    parser.add_argument(
+        "--max-keywords",
+        type=int,
+        default=5,
+        help="Maximum keywords to extract from profile (default: 5)"
+    )
 
     args = parser.parse_args()
 
@@ -848,8 +1053,15 @@ Examples:
         # Step 1: Verify profile
         profile_data = verify_profile(client, profile_url)
         
-        # Step 2: Search for posts
-        post_urls = search_for_posts(client, username, limit=args.limit)
+        # Step 2: Search for posts (using profile data for dynamic keywords)
+        post_urls = search_for_posts(
+            client,
+            username,
+            limit=args.limit,
+            profile_data=profile_data,
+            use_dynamic_keywords=not args.no_dynamic_keywords,
+            year_range=args.year_range
+        )
         
         if not post_urls:
             print("\n❌ No posts found. Try:")

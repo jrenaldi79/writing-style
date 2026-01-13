@@ -23,6 +23,7 @@ from pathlib import Path
 from datetime import datetime
 
 from config import get_data_dir, get_path
+from email_analysis_v2 import detect_schema_version, migrate_v1_to_v2
 
 DATA_DIR = get_data_dir()
 SAMPLES_DIR = get_path("samples")
@@ -217,6 +218,11 @@ def ingest_batch(batch_file, dry_run=False, force=False):
     personas = load_json(PERSONA_FILE) if PERSONA_FILE.exists() else {"personas": {}, "created": datetime.now().isoformat()}
     state = load_json(STATE_FILE)
     
+    # Detect batch schema version
+    batch_version = detect_schema_version(batch)
+    if batch_version == "1.0":
+        print(f"  📦 Detected v1.0 schema - will migrate to v2.0")
+
     # Process new personas
     for persona in new_personas:
         name = persona.get("name")
@@ -225,11 +231,19 @@ def ingest_batch(batch_file, dry_run=False, force=False):
             if not dry_run:
                 if "personas" not in personas:
                     personas["personas"] = {}
+
+                # Check if persona needs migration (v1 -> v2)
+                characteristics = persona.get("characteristics", {})
+                if characteristics and "voice_fingerprint" not in characteristics:
+                    # V1 format - migrate to v2
+                    print(f"    ↳ Migrating {name} from v1 to v2 schema")
+                    characteristics = migrate_v1_to_v2(characteristics)
+
                 personas["personas"][name] = {
                     "description": persona.get("description", ""),
                     "sample_count": 0,
                     "created": datetime.now().isoformat(),
-                    "characteristics": persona.get("characteristics", {})
+                    "characteristics": characteristics
                 }
     
     # Process samples
@@ -262,13 +276,19 @@ def ingest_batch(batch_file, dry_run=False, force=False):
         
         # Save sample file
         sample_file = SAMPLES_DIR / f"{sample_id}.json"
-        
+
+        # Migrate sample analysis if v1 format
+        analysis = sample.get("analysis", {})
+        if analysis and "voice_fingerprint" not in analysis:
+            # V1 format - migrate to v2
+            analysis = migrate_v1_to_v2(analysis)
+
         sample_data = {
             "id": sample_id,
             "source": sample.get("source", "email"),
             "persona": persona_name,
             "confidence": sample.get("confidence", 0.0),
-            "analysis": sample.get("analysis", {}),
+            "analysis": analysis,
             "content": email_content,
             "ingested": datetime.now().isoformat()
         }
