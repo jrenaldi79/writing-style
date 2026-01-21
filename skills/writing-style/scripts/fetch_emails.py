@@ -51,6 +51,7 @@ class MCPClient:
             stdout=subprocess.PIPE,
             stderr=sys.stderr,
             text=True,
+            encoding='utf-8',  # Explicit UTF-8 for Windows compatibility
             bufsize=0
         )
         self.msg_id = 0
