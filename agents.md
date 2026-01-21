@@ -100,8 +100,17 @@ venv/bin/python3 cluster_emails.py
 
 ### 2. Analysis (Session 2: Analyst)
 ```bash
-# Email analysis (repeat for each cluster)
-venv/bin/python3 prepare_batch.py && venv/bin/python3 ingest.py batches/batch_NNN.json
+# Estimate cost first (recommended)
+venv/bin/python3 analyze_clusters.py --estimate
+
+# Run parallel analysis (uses OpenRouter API)
+venv/bin/python3 analyze_clusters.py
+
+# Review draft results
+venv/bin/python3 analyze_clusters.py --review
+
+# Approve and ingest all clusters
+venv/bin/python3 analyze_clusters.py --approve
 ```
 
 ### 3. Validation (Session 2b: Judge) - Recommended
