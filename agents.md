@@ -122,7 +122,17 @@ venv/bin/python3 validate_personas.py --auto
 
 ### 4. LinkedIn (Session 3) - Optional
 ```bash
-venv/bin/python3 fetch_linkedin_mcp.py --profile "URL" && venv/bin/python3 filter_linkedin.py
+# Basic fetch (activity feed only)
+venv/bin/python3 fetch_linkedin_direct.py --profile "URL" --limit 20
+
+# Recommended: Auto-search for quality sample (15+ posts)
+venv/bin/python3 fetch_linkedin_direct.py --profile "URL" --min-posts 15
+
+# With custom search queries
+venv/bin/python3 fetch_linkedin_direct.py --profile "URL" --search-queries "company,topic1"
+
+# Filter and cluster
+venv/bin/python3 filter_linkedin.py
 venv/bin/python3 cluster_linkedin.py
 ```
 
