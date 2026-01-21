@@ -59,7 +59,10 @@ def get_openrouter_key_from_chatwise() -> str | None:
 
         if row:
             config = json.loads(row[0])
-            return config.get("openrouter_api_key")
+            key = config.get("openrouter_api_key")
+            # Strip quotes if present (key may be stored as "value")
+            if key:
+                return key.strip().strip('"').strip("'")
 
     except Exception:
         # Silently fail - will fall back to environment variable
@@ -371,11 +374,14 @@ def get_brightdata_token_from_chatwise() -> str | None:
                         # Parse the env string line by line
                         for line in env_str.split('\n'):
                             if line.startswith("API_TOKEN="):
-                                return line.split("=", 1)[1].strip()
+                                # Strip whitespace and quotes (token may be stored as KEY="value")
+                                return line.split("=", 1)[1].strip().strip('"').strip("'")
 
                     # Fallback: sometimes env might be a dict in other versions
                     elif isinstance(env_str, dict):
-                        return env_str.get("API_TOKEN")
+                        token = env_str.get("API_TOKEN")
+                        if token:
+                            return token.strip().strip('"').strip("'")
 
             except json.JSONDecodeError:
                 continue
