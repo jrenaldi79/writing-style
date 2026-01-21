@@ -17,6 +17,10 @@ Usage:
     python fetch_linkedin_direct.py --profile "https://linkedin.com/in/username" --limit 20
     python fetch_linkedin_direct.py --status
 
+    # Search-based discovery (finds more posts via web search):
+    python fetch_linkedin_direct.py --profile "username" --search-queries "jiobit,google,northwestern"
+    python fetch_linkedin_direct.py --profile "username" --search-queries "topic1,topic2" --search-engines both
+
 API Token:
     The script automatically detects your BrightData API token from:
     1. Chatwise MCP configuration (if @brightdata/mcp is configured)
@@ -451,6 +455,193 @@ def extract_post_urls_from_activity(profile_data, username, limit=20):
     return own_posts
 
 
+def extract_linkedin_urls_from_search_results(search_results, username):
+    """
+    Extract LinkedIn post/article URLs from search engine results.
+
+    Args:
+        search_results: Dict with 'organic' key containing search results
+        username: LinkedIn username to filter for ownership
+
+    Returns:
+        list: LinkedIn post/article URLs belonging to the user
+    """
+    urls = []
+    username_lower = username.lower() if username else ''
+
+    organic = search_results.get('organic', [])
+    if not organic:
+        return urls
+
+    for result in organic:
+        url = result.get('link', '') or result.get('url', '')
+        url_lower = url.lower()
+
+        # Check if it's a LinkedIn post or article URL
+        is_post = '/posts/' in url_lower
+        is_article = '/pulse/' in url_lower
+
+        if not (is_post or is_article):
+            continue
+
+        # Check ownership - URL should contain the username
+        if is_post:
+            # Pattern: /posts/{username}_ or /posts/{username}/
+            is_owned = (
+                f"/posts/{username_lower}_" in url_lower or
+                f"/posts/{username_lower}/" in url_lower
+            )
+        else:
+            # For articles, username appears in the URL slug
+            is_owned = username_lower in url_lower
+
+        if is_owned:
+            urls.append(url)
+
+    return urls
+
+
+def discover_posts_via_search(client, username, full_name, search_queries, engines=None):
+    """
+    Discover LinkedIn posts using web search engines.
+
+    This supplements the activity feed by searching for posts that may not
+    appear in recent activity. Uses multiple search queries and engines
+    for comprehensive discovery.
+
+    Args:
+        client: MCPClient instance
+        username: LinkedIn username
+        full_name: User's full name (from profile)
+        search_queries: List of additional search terms (e.g., ["jiobit", "google"])
+        engines: List of search engines to use (default: ["google"])
+
+    Returns:
+        list: Discovered LinkedIn post URLs
+    """
+    if engines is None:
+        engines = ["google"]
+
+    print("\n" + "=" * 60)
+    print("SEARCH-BASED POST DISCOVERY")
+    print("=" * 60)
+    print(f"Username: {username}")
+    print(f"Search queries: {search_queries}")
+    print(f"Engines: {engines}")
+
+    all_urls = set()
+    search_count = 0
+
+    # Build search queries
+    base_queries = [
+        f'site:linkedin.com/posts/{username}',
+        f'site:linkedin.com/posts/{username}_',
+    ]
+
+    # Add name-based searches if we have the full name
+    if full_name:
+        name_queries = [
+            f'site:linkedin.com "{full_name}" posts',
+            f'site:linkedin.com/pulse "{full_name}"',
+        ]
+        base_queries.extend(name_queries)
+
+    # Add custom search queries (e.g., topics, companies)
+    for query in search_queries:
+        query = query.strip()
+        if query:
+            base_queries.append(f'site:linkedin.com/posts/{username} {query}')
+            if full_name:
+                base_queries.append(f'site:linkedin.com "{full_name}" {query}')
+
+    # Dedupe queries
+    unique_queries = list(dict.fromkeys(base_queries))
+
+    print(f"\nRunning {len(unique_queries)} queries across {len(engines)} engine(s)...")
+
+    for engine in engines:
+        print(f"\n[SEARCH] Engine: {engine}")
+
+        for query in unique_queries:
+            search_count += 1
+            try:
+                result_json = client.call_tool("search_engine", {
+                    "query": query,
+                    "engine": engine
+                })
+                results = json.loads(result_json)
+
+                # Extract URLs from results
+                urls = extract_linkedin_urls_from_search_results(results, username)
+                new_urls = [u for u in urls if u not in all_urls]
+
+                if new_urls:
+                    all_urls.update(new_urls)
+                    print(f"   [{search_count}] +{len(new_urls)} URLs: {query[:50]}...")
+                else:
+                    print(f"   [{search_count}] 0 new: {query[:50]}...")
+
+            except Exception as e:
+                print(f"   [{search_count}] ERROR: {e}")
+
+    print(f"\n" + "=" * 60)
+    print(f"SEARCH DISCOVERY COMPLETE")
+    print(f"=" * 60)
+    print(f"Total searches: {search_count}")
+    print(f"Unique URLs found: {len(all_urls)}")
+    print(f"=" * 60)
+
+    return list(all_urls)
+
+
+def dedupe_urls(activity_urls, search_urls):
+    """
+    Combine and deduplicate URLs from activity feed and search discovery.
+
+    Normalizes URLs to handle variations (http vs https, trailing slashes, etc.)
+
+    Args:
+        activity_urls: URLs from profile activity feed
+        search_urls: URLs from search discovery
+
+    Returns:
+        list: Deduplicated list of URLs
+    """
+    def normalize_url(url):
+        """Normalize URL for comparison."""
+        url = url.lower().strip()
+        url = url.replace('http://', 'https://')
+        url = url.rstrip('/')
+        # Remove tracking parameters
+        if '?' in url:
+            url = url.split('?')[0]
+        return url
+
+    seen = set()
+    unique_urls = []
+
+    # Process activity URLs first (higher priority)
+    for url in activity_urls:
+        normalized = normalize_url(url)
+        if normalized not in seen:
+            seen.add(normalized)
+            unique_urls.append(url)
+
+    # Add search URLs that aren't duplicates
+    search_added = 0
+    for url in search_urls:
+        normalized = normalize_url(url)
+        if normalized not in seen:
+            seen.add(normalized)
+            unique_urls.append(url)
+            search_added += 1
+
+    if search_added > 0:
+        print(f"[OK] Added {search_added} unique URLs from search discovery")
+
+    return unique_urls
+
+
 def scrape_single_post(url, token, max_retries=2):
     """
     Scrape a single LinkedIn post with its own MCP client.
@@ -723,6 +914,22 @@ Examples:
         action="store_true",
         help="Show current fetch status"
     )
+    parser.add_argument(
+        "--search-queries",
+        default=None,
+        help="Comma-separated search terms for discovery (e.g., 'jiobit,google,wearables')"
+    )
+    parser.add_argument(
+        "--search-engines",
+        default="google",
+        choices=["google", "bing", "both"],
+        help="Search engine(s) to use for discovery (default: google)"
+    )
+    parser.add_argument(
+        "--search-only",
+        action="store_true",
+        help="Skip activity feed, only use search-based discovery"
+    )
 
     args = parser.parse_args()
 
@@ -782,6 +989,17 @@ Examples:
         print(f"[ERROR] Could not extract username from {profile_url}")
         sys.exit(1)
 
+    # Parse search options
+    search_queries = []
+    if args.search_queries:
+        search_queries = [q.strip() for q in args.search_queries.split(',') if q.strip()]
+
+    search_engines = []
+    if args.search_engines == "both":
+        search_engines = ["google", "bing"]
+    else:
+        search_engines = [args.search_engines]
+
     print("\n" + "=" * 60)
     print("LINKEDIN POST FETCHER (Direct API)")
     print("=" * 60)
@@ -789,6 +1007,11 @@ Examples:
     print(f"Username: {username}")
     print(f"Target posts: {args.limit}")
     print(f"Method: BrightData web_data_linkedin_* APIs")
+    if search_queries:
+        print(f"Search queries: {', '.join(search_queries)}")
+        print(f"Search engines: {', '.join(search_engines)}")
+    if args.search_only:
+        print(f"Mode: Search-only (skipping activity feed)")
 
     # Initialize MCP client
     mcp_config = get_mcp_command(token)
@@ -809,14 +1032,40 @@ Examples:
             print("   - Verifying BrightData API token is valid")
             sys.exit(1)
 
-        # Step 2: Extract post URLs from activity feed (only user's own posts)
-        post_urls = extract_post_urls_from_activity(profile_data, username, limit=args.limit)
+        # Step 2a: Extract post URLs from activity feed (unless --search-only)
+        activity_urls = []
+        if not args.search_only:
+            activity_urls = extract_post_urls_from_activity(profile_data, username, limit=args.limit)
+
+        # Step 2b: Search-based discovery (if --search-queries provided)
+        search_urls = []
+        if search_queries:
+            full_name = profile_data.get('name', '')
+            search_urls = discover_posts_via_search(
+                client, username, full_name, search_queries, search_engines
+            )
+
+        # Combine and dedupe URLs from both sources
+        if activity_urls or search_urls:
+            post_urls = dedupe_urls(activity_urls, search_urls)
+            print(f"\n[STATS] Total unique URLs: {len(post_urls)}")
+            print(f"   From activity feed: {len(activity_urls)}")
+            print(f"   From search discovery: {len(search_urls)}")
+        else:
+            post_urls = []
 
         if not post_urls:
-            print("\n[WARNING] No authored posts found in activity feed.")
+            print("\n[WARNING] No posts found.")
+            if not search_queries:
+                print("   Try adding --search-queries to discover more posts via web search.")
+                print("   Example: --search-queries 'topic1,topic2,company'")
             print("   The activity may only contain interactions (likes/shares) with others' posts.")
-            print("   Try fetching more activity or check if the profile has original posts.")
             sys.exit(1)
+
+        # Limit to requested count
+        if len(post_urls) > args.limit:
+            print(f"[INFO] Limiting to {args.limit} posts (found {len(post_urls)})")
+            post_urls = post_urls[:args.limit]
 
         # Close main client - parallel scraping will use own clients
         client.close()
@@ -845,9 +1094,13 @@ Examples:
             "fetch_summary": {
                 "total_posts": len(posts),
                 "urls_found": len(post_urls),
+                "urls_from_activity": len(activity_urls),
+                "urls_from_search": len(search_urls),
                 "urls_scraped": len(post_urls),
                 "last_fetch": datetime.now().isoformat(),
-                "method": "direct_api"
+                "method": "direct_api" + ("+search" if search_queries else ""),
+                "search_queries": search_queries if search_queries else None,
+                "search_engines": search_engines if search_queries else None
             }
         }
         save_state(state)
