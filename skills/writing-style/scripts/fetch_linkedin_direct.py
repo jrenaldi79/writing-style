@@ -21,6 +21,9 @@ Usage:
     python fetch_linkedin_direct.py --profile "username" --search-queries "jiobit,google,northwestern"
     python fetch_linkedin_direct.py --profile "username" --search-queries "topic1,topic2" --search-engines both
 
+    # Auto-search when below threshold (recommended for quality):
+    python fetch_linkedin_direct.py --profile "username" --min-posts 15
+
 API Token:
     The script automatically detects your BrightData API token from:
     1. Chatwise MCP configuration (if @brightdata/mcp is configured)
@@ -48,6 +51,10 @@ from api_keys import get_brightdata_token, is_mcp_configured_in_chatwise, KNOWN_
 DATA_DIR = get_data_dir()
 OUTPUT_DIR = get_path("linkedin_data")
 STATE_FILE = get_path("linkedin_fetch_state.json")
+
+# Quality thresholds
+RECOMMENDED_MIN_POSTS = 15
+IDEAL_MIN_POSTS = 20
 
 # One-click install URL for ChatWise users
 CHATWISE_BRIGHTDATA_URL = "https://chatwise.app/mcp-add?json=ewogICJtY3BTZXJ2ZXJzIjogewogICAgImJyaWdodGRhdGEiOiB7CiAgICAgICJjb21tYW5kIjogIm5weCIsCiAgICAgICJhcmdzIjogWyJAYnJpZ2h0ZGF0YS9tY3AiXSwKICAgICAgImVudiI6IHsKICAgICAgICAiQVBJX1RPS0VOIjogIllPVVJfQlJJR0hUREFUQV9UT0tFTiIsCiAgICAgICAgIkdST1VQUyI6ICJhZHZhbmNlZF9zY3JhcGluZyxzb2NpYWwiCiAgICAgIH0KICAgIH0KICB9Cn0="
@@ -453,6 +460,98 @@ def extract_post_urls_from_activity(profile_data, username, limit=20):
     print("=" * 60)
 
     return own_posts
+
+
+def build_smart_queries(profile_data):
+    """
+    Build search queries automatically from profile data.
+
+    Extracts company names, job titles, and other relevant terms
+    to find posts that may not appear in the activity feed.
+
+    Args:
+        profile_data: Dict from web_data_linkedin_person_profile
+
+    Returns:
+        list: Search query terms
+    """
+    queries = []
+
+    # Current company
+    company = profile_data.get('current_company_name', '')
+    if company and len(company) > 2:
+        queries.append(company)
+
+    # Position/headline keywords
+    position = profile_data.get('position', '')
+    if position:
+        # Extract key terms from position
+        for term in ['CEO', 'CTO', 'founder', 'director', 'lead', 'head', 'VP']:
+            if term.lower() in position.lower():
+                queries.append(term)
+
+    # Past companies from experience (if available)
+    experience = profile_data.get('experience', [])
+    if isinstance(experience, list):
+        for exp in experience[:3]:  # Top 3 past roles
+            if isinstance(exp, dict):
+                past_company = exp.get('company', '') or exp.get('company_name', '')
+                if past_company and past_company not in queries:
+                    queries.append(past_company)
+
+    # Industry keywords
+    industry = profile_data.get('industry', '')
+    if industry:
+        queries.append(industry)
+
+    # Dedupe and clean
+    queries = list(dict.fromkeys([q.strip() for q in queries if q and len(q) > 2]))
+
+    return queries[:6]  # Limit to 6 queries to avoid too many searches
+
+
+def print_quality_warning(post_count, context=""):
+    """
+    Print quality warning if post count is below recommended threshold.
+
+    Args:
+        post_count: Number of posts found
+        context: Additional context for the warning
+    """
+    if post_count >= IDEAL_MIN_POSTS:
+        print(f"\n[OK] Post count: {post_count} (Good quality sample)")
+        return
+
+    print(f"\n{'=' * 60}")
+    print(f"[WARNING] LOW POST COUNT: {post_count}")
+    print(f"{'=' * 60}")
+
+    if post_count < 5:
+        quality = "VERY LOW"
+        impact = "Persona will be unreliable"
+    elif post_count < 10:
+        quality = "LOW"
+        impact = "Persona may miss important voice patterns"
+    elif post_count < RECOMMENDED_MIN_POSTS:
+        quality = "BELOW RECOMMENDED"
+        impact = "Persona confidence will be reduced"
+    else:
+        quality = "ACCEPTABLE"
+        impact = "Close to ideal, minor patterns may be missed"
+
+    print(f"   Quality: {quality}")
+    print(f"   Impact: {impact}")
+    print(f"   Recommended: {RECOMMENDED_MIN_POSTS}-{IDEAL_MIN_POSTS}+ posts")
+
+    if context:
+        print(f"   {context}")
+
+    if post_count < RECOMMENDED_MIN_POSTS:
+        print(f"\n[SUGGEST] To improve quality:")
+        print(f"   --search-queries 'company,topic1,topic2'")
+        print(f"   --min-posts {RECOMMENDED_MIN_POSTS}")
+
+    print(f"{'=' * 60}\n")
 
 
 def extract_linkedin_urls_from_search_results(search_results, username):
@@ -968,6 +1067,12 @@ Examples:
         action="store_true",
         help="Skip activity feed, only use search-based discovery"
     )
+    parser.add_argument(
+        "--min-posts",
+        type=int,
+        default=0,
+        help=f"Auto-search if below this threshold (recommended: {RECOMMENDED_MIN_POSTS})"
+    )
 
     args = parser.parse_args()
 
@@ -1075,7 +1180,20 @@ Examples:
         if not args.search_only:
             activity_urls = extract_post_urls_from_activity(profile_data, username, limit=args.limit)
 
-        # Step 2b: Search-based discovery (if --search-queries provided)
+        # Step 2b: Auto-search if below --min-posts threshold
+        # This triggers smart query generation from profile data
+        auto_search_triggered = False
+        if args.min_posts > 0 and len(activity_urls) < args.min_posts and not search_queries:
+            print(f"\n[AUTO-SEARCH] Activity feed returned {len(activity_urls)} posts, below threshold of {args.min_posts}")
+            print("[AUTO-SEARCH] Generating smart search queries from profile...")
+            search_queries = build_smart_queries(profile_data)
+            if search_queries:
+                print(f"[AUTO-SEARCH] Using queries: {', '.join(search_queries)}")
+                auto_search_triggered = True
+            else:
+                print("[AUTO-SEARCH] Could not extract search terms from profile")
+
+        # Step 2c: Search-based discovery (if --search-queries provided or auto-triggered)
         # Runs in parallel with separate MCP clients for speed
         search_urls = []
         if search_queries:
@@ -1090,6 +1208,8 @@ Examples:
             print(f"\n[STATS] Total unique URLs: {len(post_urls)}")
             print(f"   From activity feed: {len(activity_urls)}")
             print(f"   From search discovery: {len(search_urls)}")
+            if auto_search_triggered:
+                print(f"   (auto-search was triggered)")
         else:
             post_urls = []
 
@@ -1098,6 +1218,7 @@ Examples:
             if not search_queries:
                 print("   Try adding --search-queries to discover more posts via web search.")
                 print("   Example: --search-queries 'topic1,topic2,company'")
+                print("   Or use --min-posts 15 for automatic search discovery.")
             print("   The activity may only contain interactions (likes/shares) with others' posts.")
             sys.exit(1)
 
@@ -1118,6 +1239,9 @@ Examples:
 
         # Step 4: Save results
         process_and_save(posts, profile_data)
+
+        # Step 5: Quality assessment
+        print_quality_warning(len(posts))
 
         # Update state
         state = {

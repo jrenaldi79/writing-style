@@ -670,6 +670,36 @@ def create_rich_persona(posts: list) -> dict:
         ]
     }
 
+RECOMMENDED_MIN_POSTS = 15
+IDEAL_MIN_POSTS = 20
+
+
+def print_sample_size_warning(sample_size, confidence):
+    """Print warning if sample size is below recommended threshold."""
+    if sample_size >= IDEAL_MIN_POSTS:
+        return  # Good sample size, no warning needed
+
+    print(f"\n{'=' * 60}")
+    print(f"[WARNING] LOW SAMPLE SIZE DETECTED")
+    print(f"{'=' * 60}")
+    print(f"   Current: {sample_size} posts")
+    print(f"   Recommended: {RECOMMENDED_MIN_POSTS}-{IDEAL_MIN_POSTS}+ posts")
+    print(f"   Confidence: {confidence}")
+
+    if sample_size < 5:
+        print(f"\n   [!] VERY LOW sample - persona may be unreliable")
+        print(f"   [!] Voice patterns likely incomplete")
+    elif sample_size < 10:
+        print(f"\n   [!] LOW sample - important patterns may be missed")
+    elif sample_size < RECOMMENDED_MIN_POSTS:
+        print(f"\n   [!] BELOW RECOMMENDED - consider fetching more posts")
+
+    print(f"\n[SUGGEST] To improve quality, fetch more posts:")
+    print(f"   python fetch_linkedin_direct.py --profile <url> --min-posts {RECOMMENDED_MIN_POSTS}")
+    print(f"   python fetch_linkedin_direct.py --profile <url> --search-queries 'topic1,topic2'")
+    print(f"{'=' * 60}")
+
+
 def main():
     print("Loading posts...")
     posts = load_posts()
@@ -678,6 +708,11 @@ def main():
         return
 
     print(f"Analyzing {len(posts)} posts for V2 Persona generation...")
+
+    # Pre-flight sample size check
+    if len(posts) < RECOMMENDED_MIN_POSTS:
+        print(f"\n[INFO] Sample size ({len(posts)}) is below recommended ({RECOMMENDED_MIN_POSTS})")
+        print(f"[INFO] Proceeding with analysis, but confidence will be reduced...")
 
     # Use V2 schema
     v2_persona = create_v2_persona(posts)
@@ -691,6 +726,9 @@ def main():
     print(f"   Schema version: {v2_persona['schema_version']}")
     print(f"   Confidence: {v2_persona['confidence']}")
     print(f"   Sample size: {v2_persona['sample_size']}")
+
+    # Post-generation quality warning
+    print_sample_size_warning(len(posts), v2_persona['confidence'])
     print(f"\nTone vectors:")
     print(json.dumps(v2_persona['voice']['tone_vectors'], indent=2))
     print(f"\n[SAVE] Saved to: {OUTPUT_FILE}")
