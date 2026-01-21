@@ -986,6 +986,96 @@ def reject_draft():
         draft_file.unlink()
 
 
+def convert_draft_cluster_to_batch(cluster_id: str, result: Dict) -> Dict:
+    """Convert a draft cluster result to ingest batch format.
+
+    The draft format stores results keyed by cluster_id with analysis data.
+    The ingest.py expects a batch format with explicit batch_id and cluster_id.
+
+    Args:
+        cluster_id: The cluster ID (as string from draft JSON keys)
+        result: The cluster result dict from draft['results'][cluster_id]
+
+    Returns:
+        Dict in batch format suitable for ingest_batch()
+    """
+    return {
+        'schema_version': result.get('schema_version', '2.0'),
+        'batch_id': f"batch_{cluster_id}",
+        'cluster_id': int(cluster_id) if cluster_id.isdigit() else cluster_id,
+        'new_personas': result.get('new_personas', []),
+        'samples': result.get('samples', [])
+    }
+
+
+def approve_draft() -> int:
+    """Approve and ingest all clusters from the draft.
+
+    This function:
+    1. Loads the pending draft
+    2. Converts each cluster result to batch format
+    3. Calls ingest_batch() for each cluster
+    4. Validates the registry after ingestion
+    5. Cleans up the draft file on success
+
+    Returns:
+        int: Exit code (0 for success, 1 for error)
+    """
+    # Import ingest functions (deferred to avoid circular imports)
+    from ingest import ingest_batch, load_json, PERSONA_FILE
+
+    draft = load_draft()
+    if not draft:
+        print("No draft found. Run analysis first.")
+        return 1
+
+    results = draft.get('results', {})
+    if not results:
+        print("Draft has no results to approve.")
+        return 1
+
+    total_samples = 0
+    all_persona_names = set()
+
+    # Process each cluster
+    for cluster_id, result in results.items():
+        batch = convert_draft_cluster_to_batch(str(cluster_id), result)
+
+        print(f"\nIngesting cluster {cluster_id}...")
+        success = ingest_batch(batch, dry_run=False, force=True)
+
+        if success:
+            total_samples += len(batch.get('samples', []))
+            for p in batch.get('new_personas', []):
+                name = p.get('name')
+                if name:
+                    all_persona_names.add(name)
+        else:
+            print(f"  Failed to ingest cluster {cluster_id}")
+
+    # Post-ingest validation
+    registry = load_json(PERSONA_FILE)
+    actual_personas = set(registry.get('personas', {}).keys())
+
+    if len(actual_personas) == 0:
+        print("\nERROR: Registry is empty after ingest!")
+        print("Check ingest.py for errors.")
+        return 1
+
+    print(f"\n{'=' * 60}")
+    print("APPROVAL COMPLETE")
+    print(f"{'=' * 60}")
+    print(f"Samples ingested: {total_samples}")
+    print(f"Personas in registry: {len(actual_personas)}")
+    print(f"{'=' * 60}")
+
+    # Clean up draft on success
+    reject_draft()
+    print("\nDraft cleared. Ready for next analysis.")
+
+    return 0
+
+
 def show_review_summary(draft: Dict) -> str:
     """Generate human-readable summary of draft results."""
     results = draft.get('results', {})
@@ -1130,15 +1220,7 @@ def main():
 
     # Handle approve
     if args.approve:
-        draft = load_draft()
-        if not draft:
-            print("No draft found. Run analysis first.")
-            return 1
-
-        # TODO: Implement actual ingestion (integrate with ingest.py)
-        print("Approval and ingestion not yet implemented.")
-        print("For now, export the draft manually and use ingest.py.")
-        return 1
+        return approve_draft()
 
     # Check prerequisites for analysis
     if has_pending_draft() and not args.dry_run:

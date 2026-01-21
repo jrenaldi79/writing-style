@@ -24,6 +24,10 @@ from datetime import datetime
 
 from config import get_data_dir, get_path
 from email_analysis_v2 import detect_schema_version, migrate_v1_to_v2
+from typing import Dict
+
+# Export functions for external use (e.g., by analyze_clusters.py)
+__all__ = ['ingest_batch', 'load_json', 'save_json', 'PERSONA_FILE', 'validate_ingest_result']
 
 DATA_DIR = get_data_dir()
 SAMPLES_DIR = get_path("samples")
@@ -49,6 +53,52 @@ def save_json(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w") as f:
         json.dump(data, f, indent=2)
+
+
+def validate_ingest_result(batch: Dict, dry_run: bool = False) -> bool:
+    """Validate that ingest actually wrote data to registry.
+
+    This function verifies that after ingestion, the persona registry
+    contains the expected personas from the batch. This catches silent
+    failures where ingest reports success but registry is empty.
+
+    Args:
+        batch: The batch data that was ingested
+        dry_run: If True, skip validation (always return True)
+
+    Returns:
+        bool: True if validation passes, False if personas are missing
+    """
+    if dry_run:
+        return True
+
+    registry = load_json(PERSONA_FILE)
+    personas_in_registry = set(registry.get('personas', {}).keys())
+
+    # Collect expected personas from batch
+    expected = set()
+    for p in batch.get('new_personas', []):
+        name = p.get('name')
+        if name:
+            expected.add(name)
+
+    # Also check personas referenced in samples
+    for s in batch.get('samples', []):
+        persona = s.get('persona')
+        if persona:
+            expected.add(persona)
+
+    # Find missing personas
+    missing = expected - personas_in_registry
+
+    if missing:
+        print(f"  WARNING: {len(missing)} personas missing from registry: {', '.join(sorted(missing))}")
+        return False
+
+    # Report registry stats for visibility
+    file_size = PERSONA_FILE.stat().st_size if PERSONA_FILE.exists() else 0
+    print(f"  Validation: {len(personas_in_registry)} personas in registry ({file_size:,} bytes)")
+    return True
 
 
 def validate_batch_coverage(batch_data: dict, force: bool = False) -> tuple:
@@ -223,22 +273,41 @@ def ingest_batch(batch_file, dry_run=False, force=False):
     if batch_version == "1.0":
         print(f"  📦 Detected v1.0 schema - will migrate to v2.0")
 
-    # Process new personas
+    # Process personas (new or existing)
     for persona in new_personas:
         name = persona.get("name")
-        if name and name not in personas.get("personas", {}):
-            print(f"  ✨ New persona: {name}")
-            if not dry_run:
-                if "personas" not in personas:
-                    personas["personas"] = {}
+        if not name:
+            continue
 
-                # Check if persona needs migration (v1 -> v2)
-                characteristics = persona.get("characteristics", {})
-                if characteristics and "voice_fingerprint" not in characteristics:
-                    # V1 format - migrate to v2
-                    print(f"    ↳ Migrating {name} from v1 to v2 schema")
-                    characteristics = migrate_v1_to_v2(characteristics)
+        is_existing = name in personas.get("personas", {})
+        if is_existing:
+            print(f"  Updating persona: {name}")
+        else:
+            print(f"  New persona: {name}")
 
+        if not dry_run:
+            if "personas" not in personas:
+                personas["personas"] = {}
+
+            # Check if persona needs migration (v1 -> v2)
+            characteristics = persona.get("characteristics", {})
+            if characteristics and "voice_fingerprint" not in characteristics:
+                # V1 format - migrate to v2
+                print(f"    Migrating {name} from v1 to v2 schema")
+                characteristics = migrate_v1_to_v2(characteristics)
+
+            # Always write persona data (update existing or create new)
+            if is_existing:
+                # Preserve existing created timestamp
+                existing = personas["personas"][name]
+                personas["personas"][name] = {
+                    "description": persona.get("description", existing.get("description", "")),
+                    "sample_count": existing.get("sample_count", 0),
+                    "created": existing.get("created", datetime.now().isoformat()),
+                    "updated": datetime.now().isoformat(),
+                    "characteristics": characteristics or existing.get("characteristics", {})
+                }
+            else:
                 personas["personas"][name] = {
                     "description": persona.get("description", ""),
                     "sample_count": 0,
@@ -402,6 +471,10 @@ def ingest_batch(batch_file, dry_run=False, force=False):
             print("█                                                          █")
             print("█  Reason: Clean context improves output quality.          █")
             print(f"{'█' * 60}\n")
+
+    # Post-ingest validation
+    if not dry_run:
+        validate_ingest_result(batch, dry_run=dry_run)
 
     return True
 

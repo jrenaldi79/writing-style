@@ -617,5 +617,179 @@ class TestReviewSummary(unittest.TestCase):
         self.assertIn("2", summary)  # 2 personas (may overlap with cluster count)
 
 
+class TestApproveWorkflow(unittest.TestCase):
+    """Test --approve workflow: draft conversion, ingestion, and validation."""
+
+    def test_approve_converts_draft_to_batch_format(self):
+        """--approve should convert draft format to ingest batch format."""
+        import analyze_clusters
+
+        draft = {
+            "results": {
+                "0": {
+                    "schema_version": "2.0",
+                    "new_personas": [
+                        {"name": "Executive Brief", "description": "Short updates"}
+                    ],
+                    "samples": [
+                        {"id": "email_001", "persona": "Executive Brief", "confidence": 0.85}
+                    ]
+                }
+            },
+            "merged_personas": [{"name": "Executive Brief"}],
+            "metadata": {"model": "test-model"}
+        }
+
+        # Test the conversion function
+        batch = analyze_clusters.convert_draft_cluster_to_batch("0", draft["results"]["0"])
+
+        self.assertIn("batch_id", batch)
+        self.assertIn("cluster_id", batch)
+        self.assertEqual(batch["cluster_id"], 0)
+        self.assertIn("new_personas", batch)
+        self.assertIn("samples", batch)
+        self.assertEqual(len(batch["samples"]), 1)
+
+    def test_approve_calls_ingest_for_each_cluster(self):
+        """--approve should call ingest_batch for each cluster result."""
+        import analyze_clusters
+        import ingest
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            draft_file = tmp_path / "analysis_draft.json"
+            persona_file = tmp_path / "persona_registry.json"
+
+            # Create draft with 2 clusters
+            draft = {
+                "results": {
+                    "0": {
+                        "schema_version": "2.0",
+                        "new_personas": [{"name": "Persona A", "description": "Test"}],
+                        "samples": [{"id": "email_001", "persona": "Persona A", "confidence": 0.9}]
+                    },
+                    "1": {
+                        "schema_version": "2.0",
+                        "new_personas": [{"name": "Persona B", "description": "Test"}],
+                        "samples": [{"id": "email_002", "persona": "Persona B", "confidence": 0.8}]
+                    }
+                },
+                "merged_personas": [],
+                "metadata": {}
+            }
+            draft_file.write_text(json.dumps(draft))
+
+            # Track ingest calls
+            ingest_calls = []
+
+            def mock_ingest_batch(batch_data, dry_run=False, force=False):
+                ingest_calls.append(batch_data)
+                return True
+
+            def mock_load_json(path):
+                return {"personas": {"Persona A": {}, "Persona B": {}}}
+
+            with patch.object(analyze_clusters, '_get_draft_file', return_value=draft_file), \
+                 patch.object(ingest, 'ingest_batch', mock_ingest_batch), \
+                 patch.object(ingest, 'PERSONA_FILE', persona_file), \
+                 patch.object(ingest, 'load_json', mock_load_json):
+                result = analyze_clusters.approve_draft()
+
+            # Should have called ingest for 2 clusters
+            self.assertEqual(len(ingest_calls), 2)
+            self.assertEqual(result, 0)  # Success exit code
+
+    def test_approve_validates_registry_after_ingest(self):
+        """--approve should verify registry contains personas after ingest."""
+        import analyze_clusters
+        import ingest
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            draft_file = tmp_path / "analysis_draft.json"
+            persona_file = tmp_path / "persona_registry.json"
+
+            draft = {
+                "results": {
+                    "0": {
+                        "schema_version": "2.0",
+                        "new_personas": [{"name": "Test Persona", "description": "Test"}],
+                        "samples": [{"id": "email_001", "persona": "Test Persona", "confidence": 0.9}]
+                    }
+                },
+                "merged_personas": [],
+                "metadata": {}
+            }
+            draft_file.write_text(json.dumps(draft))
+
+            # Mock ingest succeeds but registry is empty (bug scenario)
+            def mock_ingest_batch(batch_data, dry_run=False, force=False):
+                return True
+
+            def mock_load_json(path):
+                return {"personas": {}}  # Empty registry simulates the bug
+
+            with patch.object(analyze_clusters, '_get_draft_file', return_value=draft_file), \
+                 patch.object(ingest, 'ingest_batch', mock_ingest_batch), \
+                 patch.object(ingest, 'PERSONA_FILE', persona_file), \
+                 patch.object(ingest, 'load_json', mock_load_json):
+                result = analyze_clusters.approve_draft()
+
+            # Should return error because registry is empty
+            self.assertEqual(result, 1)
+
+    def test_approve_cleans_up_draft_on_success(self):
+        """--approve should remove draft file after successful ingest."""
+        import analyze_clusters
+        import ingest
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            draft_file = tmp_path / "analysis_draft.json"
+            persona_file = tmp_path / "persona_registry.json"
+
+            draft = {
+                "results": {
+                    "0": {
+                        "schema_version": "2.0",
+                        "new_personas": [{"name": "Test Persona", "description": "Test"}],
+                        "samples": [{"id": "email_001", "persona": "Test Persona", "confidence": 0.9}]
+                    }
+                },
+                "merged_personas": [],
+                "metadata": {}
+            }
+            draft_file.write_text(json.dumps(draft))
+
+            def mock_ingest_batch(batch_data, dry_run=False, force=False):
+                return True
+
+            def mock_load_json(path):
+                return {"personas": {"Test Persona": {}}}
+
+            with patch.object(analyze_clusters, '_get_draft_file', return_value=draft_file), \
+                 patch.object(ingest, 'ingest_batch', mock_ingest_batch), \
+                 patch.object(ingest, 'PERSONA_FILE', persona_file), \
+                 patch.object(ingest, 'load_json', mock_load_json):
+                result = analyze_clusters.approve_draft()
+
+            # Draft should be removed
+            self.assertFalse(draft_file.exists())
+            self.assertEqual(result, 0)
+
+    def test_approve_returns_error_when_no_draft(self):
+        """--approve should error if no draft exists."""
+        import analyze_clusters
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            draft_file = tmp_path / "analysis_draft.json"  # Does not exist
+
+            with patch.object(analyze_clusters, '_get_draft_file', return_value=draft_file):
+                result = analyze_clusters.approve_draft()
+
+            self.assertEqual(result, 1)
+
+
 if __name__ == '__main__':
     unittest.main()
