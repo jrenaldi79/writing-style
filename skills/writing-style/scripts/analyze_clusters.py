@@ -1145,12 +1145,13 @@ def main():
         print("A draft already exists. Use --review, --approve, or --reject first.")
         return 1
 
-    if not check_model_configured():
-        print("No OpenRouter model configured.")
-        print("Run: python validate_personas.py --set-model")
-        return 1
-
     model = args.model or _get_selected_model()
+
+    # Inform user about model being used
+    if not check_model_configured() and not args.model:
+        print(f"No model explicitly configured. Using default: {DEFAULT_MODEL}")
+        print(f"To change: python validate_personas.py --set-model 'model-id'")
+        print(f"Or use: python analyze_clusters.py --model 'model-id'\n")
 
     # Load clusters
     clusters = load_unanalyzed_clusters()
