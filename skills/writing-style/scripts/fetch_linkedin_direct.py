@@ -383,19 +383,24 @@ def fetch_profile_direct(client, profile_url):
         return None
 
 
-def extract_post_urls_from_activity(profile_data, limit=20):
+def extract_post_urls_from_activity(profile_data, username, limit=20):
     """
     Extract post URLs from the profile's activity feed.
 
     This is much more reliable than Google search as it
     comes directly from LinkedIn's data.
 
+    IMPORTANT: The activity feed includes all interactions (likes, shares,
+    comments on others' posts). We filter to only include URLs that contain
+    the user's username, indicating they authored the post.
+
     Args:
         profile_data: Dict from web_data_linkedin_person_profile
+        username: LinkedIn username for filtering own posts
         limit: Maximum URLs to return
 
     Returns:
-        list: Post URLs from activity feed
+        list: Post URLs authored by the user
     """
     print("\n" + "=" * 60)
     print("STEP 2: EXTRACT POST URLs FROM ACTIVITY")
@@ -408,27 +413,42 @@ def extract_post_urls_from_activity(profile_data, limit=20):
         print("   This may be a private profile or the user has no recent posts.")
         return []
 
-    post_urls = []
+    username_lower = username.lower() if username else ''
+    own_posts = []
+    interactions = 0
     skipped = 0
 
     for item in activity:
         link = item.get('link', '')
+        link_lower = link.lower()
 
-        # Filter to only include actual posts (not shares, comments, etc.)
+        # Check if this is a post/article URL
         if '/posts/' in link or '/pulse/' in link:
-            post_urls.append(link)
+            # Check if this is the user's OWN post (URL contains their username)
+            # Pattern: /posts/{username}_ or /posts/{username}/
+            is_own_post = (
+                f"/posts/{username_lower}_" in link_lower or
+                f"/posts/{username_lower}/" in link_lower or
+                (f"/pulse/" in link_lower and username_lower in link_lower)
+            )
+
+            if is_own_post:
+                own_posts.append(link)
+            else:
+                interactions += 1
         else:
             skipped += 1
 
     # Limit results
-    post_urls = post_urls[:limit]
+    own_posts = own_posts[:limit]
 
     print(f"Total activity items: {len(activity)}")
-    print(f"Post URLs extracted: {len(post_urls)}")
-    print(f"Skipped (not posts): {skipped}")
+    print(f"User's own posts: {len(own_posts)}")
+    print(f"Interactions with others: {interactions}")
+    print(f"Other activity (skipped): {skipped}")
     print("=" * 60)
 
-    return post_urls
+    return own_posts
 
 
 def scrape_single_post(url, token, max_retries=2):
@@ -481,7 +501,7 @@ def scrape_single_post(url, token, max_retries=2):
         client.close()
 
 
-def scrape_posts_parallel(urls, profile_data, token, max_workers=5):
+def scrape_posts_parallel(urls, profile_data, token, username, max_workers=5):
     """
     Scrape LinkedIn posts in parallel using web_data_linkedin_posts.
 
@@ -489,6 +509,7 @@ def scrape_posts_parallel(urls, profile_data, token, max_workers=5):
         urls: List of LinkedIn post URLs
         profile_data: Profile data for ownership validation
         token: BrightData API token
+        username: LinkedIn username (from URL) for ownership validation
         max_workers: Number of parallel scrapers
 
     Returns:
@@ -502,9 +523,9 @@ def scrape_posts_parallel(urls, profile_data, token, max_workers=5):
     all_posts = []
     rejected_posts = []
 
-    # Get the expected user ID from profile
+    # Get the expected user ID from profile and passed username
     expected_linkedin_id = profile_data.get('linkedin_id', '')
-    expected_username = extract_username(profile_data.get('linkedin_url', ''))
+    expected_username = username  # Use passed username directly
 
     # Scrape posts in parallel
     batch_results = {}
@@ -538,16 +559,38 @@ def scrape_posts_parallel(urls, profile_data, token, max_workers=5):
         if not post_data or not post_data.get("post_text"):
             continue
 
-        # Validate ownership - compare user_id with expected
+        # Validate ownership - check if this is the user's own post
         post_user_id = post_data.get('user_id', '')
         post_linkedin_id = post_data.get('linkedin_id', '')
 
-        # Check for match (either username or linkedin_id)
-        is_owner = (
-            (expected_username and expected_username.lower() in post_user_id.lower()) or
-            (expected_linkedin_id and expected_linkedin_id == post_linkedin_id) or
-            (expected_username and f"/in/{expected_username}" in url.lower())
+        # The most reliable check is if the post URL contains the user's username
+        # Activity feed includes interactions (likes, shares) with others' posts
+        # Only posts authored by the user will have their username in the URL
+        url_lower = url.lower()
+        username_lower = expected_username.lower() if expected_username else ''
+
+        # Check for ownership:
+        # 1. URL contains /posts/{username}_ pattern (authored posts)
+        # 2. URL contains /pulse/ and username (articles)
+        # 3. post_user_id matches username (direct match)
+        # 4. linkedin_id matches
+        is_authored_post = (
+            f"/posts/{username_lower}_" in url_lower or
+            f"/posts/{username_lower}/" in url_lower
         )
+        is_authored_article = (
+            "/pulse/" in url_lower and username_lower in url_lower
+        )
+        is_user_id_match = (
+            post_user_id and username_lower and
+            username_lower in post_user_id.lower()
+        )
+        is_linkedin_id_match = (
+            expected_linkedin_id and post_linkedin_id and
+            expected_linkedin_id.lower() == post_linkedin_id.lower()
+        )
+
+        is_owner = is_authored_post or is_authored_article or is_user_id_match or is_linkedin_id_match
 
         if is_owner:
             post_entry = {
@@ -766,19 +809,20 @@ Examples:
             print("   - Verifying BrightData API token is valid")
             sys.exit(1)
 
-        # Step 2: Extract post URLs from activity feed
-        post_urls = extract_post_urls_from_activity(profile_data, limit=args.limit)
+        # Step 2: Extract post URLs from activity feed (only user's own posts)
+        post_urls = extract_post_urls_from_activity(profile_data, username, limit=args.limit)
 
         if not post_urls:
-            print("\n[WARNING] No posts found in activity feed.")
-            print("   The profile may be private or have no recent posts.")
+            print("\n[WARNING] No authored posts found in activity feed.")
+            print("   The activity may only contain interactions (likes/shares) with others' posts.")
+            print("   Try fetching more activity or check if the profile has original posts.")
             sys.exit(1)
 
         # Close main client - parallel scraping will use own clients
         client.close()
 
         # Step 3: Scrape posts in parallel
-        posts = scrape_posts_parallel(post_urls, profile_data, token)
+        posts = scrape_posts_parallel(post_urls, profile_data, token, username)
 
         if not posts:
             print("\n[ERROR] No posts could be scraped successfully")
