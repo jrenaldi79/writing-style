@@ -14,6 +14,12 @@ Usage:
     python generate_system_prompt.py --status  # Show available personas
 """
 
+
+# Windows compatibility: ensure local imports work
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
 import json
 import argparse
 from pathlib import Path
@@ -33,7 +39,7 @@ DEFAULT_HEADER = """
 You are an advanced AI writing clone of **John (JR) Renaldi**.
 Your goal is to replicate his authentic voice across different communication channels.
 
-# 🧠 CONTEXT ROUTING LOGIC
+# [BRAIN] CONTEXT ROUTING LOGIC
 
 Before writing ANY text, you must Determine the **Communication Channel**.
 
@@ -53,7 +59,7 @@ Before writing ANY text, you must Determine the **Communication Channel**.
 def load_email_personas():
     """Load email personas from persona_registry.json if they exist."""
     if not PERSONA_REGISTRY_FILE.exists():
-        print(f"⚠️  Persona registry not found at {PERSONA_REGISTRY_FILE}")
+        print(f"[WARNING]  Persona registry not found at {PERSONA_REGISTRY_FILE}")
         return []
 
     with open(PERSONA_REGISTRY_FILE) as f:
@@ -83,7 +89,7 @@ def load_email_personas():
 def load_linkedin_persona():
     """Load LinkedIn persona if it exists."""
     if not LINKEDIN_PERSONA_FILE.exists():
-        print(f"⚠️  LinkedIn persona not found at {LINKEDIN_PERSONA_FILE}")
+        print(f"[WARNING]  LinkedIn persona not found at {LINKEDIN_PERSONA_FILE}")
         return None
     
     with open(LINKEDIN_PERSONA_FILE) as f:
@@ -167,37 +173,37 @@ def format_linkedin_section(data):
 
 def show_status():
     """Show what data is available for generation."""
-    print(f"\n{'═' * 50}")
+    print(f"\n{'=' * 50}")
     print("GENERATION STATUS")
-    print(f"{'═' * 50}")
+    print(f"{'=' * 50}")
 
     # Check email personas
     if PERSONA_REGISTRY_FILE.exists():
         with open(PERSONA_REGISTRY_FILE) as f:
             data = json.load(f)
         personas = data.get('personas', {})
-        print(f"\n📧 Email Personas: {len(personas)}")
+        print(f"\n[EMAIL] Email Personas: {len(personas)}")
         for name, info in personas.items():
-            print(f"   • {name}: {info.get('sample_count', 0)} samples")
+            print(f"   - {name}: {info.get('sample_count', 0)} samples")
     else:
-        print(f"\n📧 Email Personas: None found")
+        print(f"\n[EMAIL] Email Personas: None found")
         print(f"   Run the email analysis pipeline first")
 
     # Check LinkedIn persona
     if LINKEDIN_PERSONA_FILE.exists():
         with open(LINKEDIN_PERSONA_FILE) as f:
             data = json.load(f)
-        print(f"\n🔗 LinkedIn Persona: Found")
+        print(f"\n[LINK] LinkedIn Persona: Found")
         if 'schema_version' in data:
             print(f"   Schema version: {data.get('schema_version')}")
     else:
-        print(f"\n🔗 LinkedIn Persona: None found")
+        print(f"\n[LINK] LinkedIn Persona: None found")
         print(f"   Run the LinkedIn pipeline first (optional)")
 
-    print(f"\n{'═' * 50}")
+    print(f"\n{'=' * 50}")
     print("\nTo generate the prompt:")
     print("  python generate_system_prompt.py")
-    print(f"{'═' * 50}\n")
+    print(f"{'=' * 50}\n")
 
 
 def main():
@@ -220,7 +226,7 @@ Examples:
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    print("🔹 Loading Analysis Data...")
+    print("- Loading Analysis Data...")
     email_personas = load_email_personas()
     linkedin_persona = load_linkedin_persona()
 
@@ -239,7 +245,7 @@ Examples:
 
     # Check if we have any data
     if not email_personas and not linkedin_persona:
-        print("\n❌ No persona data found!")
+        print("\n[ERROR] No persona data found!")
         print("\nRun one of these pipelines first:")
         print("  Email:    python fetch_emails.py && python filter_emails.py && ...")
         print("  LinkedIn: python fetch_linkedin_mcp.py --profile URL && ...")
@@ -256,7 +262,7 @@ Examples:
     with open(OUTPUT_FILE, 'w') as f:
         f.write(full_prompt)
 
-    print(f"\n✅ MASTER PROMPT GENERATED: {OUTPUT_FILE}")
+    print(f"\n[OK] MASTER PROMPT GENERATED: {OUTPUT_FILE}")
     print("   Copy content from this file to your LLM system instructions.")
 
 

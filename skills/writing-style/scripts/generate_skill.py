@@ -14,6 +14,12 @@ Usage:
     python generate_skill.py --output ~/skills  # Custom output directory
 """
 
+
+# Windows compatibility: ensure local imports work
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
 import json
 import argparse
 import sys
@@ -215,8 +221,8 @@ Before writing ANY text, determine the communication channel:
 When asked to write content:
 
 1. **Identify the channel:**
-   - Email/DM → Use adaptive email personas
-   - LinkedIn/Social → Use unified voice
+   - Email/DM -> Use adaptive email personas
+   - LinkedIn/Social -> Use unified voice
 
 2. **For emails:**
    - Determine recipient type (executive, peer, client, etc.)
@@ -453,7 +459,7 @@ def generate_skill(user_name: str, output_dir: Path) -> Path:
     personas = load_email_personas()
     linkedin = load_linkedin_persona()
 
-    print(f"📊 Loading persona data...")
+    print(f"[STATS] Loading persona data...")
     print(f"   Email personas: {len(personas)}")
     print(f"   LinkedIn voice: {'Yes' if linkedin else 'No'}")
 
@@ -462,7 +468,7 @@ def generate_skill(user_name: str, output_dir: Path) -> Path:
     skill_file = skill_dir / "SKILL.md"
     with open(skill_file, 'w') as f:
         f.write(skill_content)
-    print(f"   ✓ Created SKILL.md")
+    print(f"   [OK] Created SKILL.md")
 
     # Generate email personas reference
     if personas:
@@ -470,7 +476,7 @@ def generate_skill(user_name: str, output_dir: Path) -> Path:
         email_file = references_dir / "email_personas.md"
         with open(email_file, 'w') as f:
             f.write(email_content)
-        print(f"   ✓ Created references/email_personas.md")
+        print(f"   [OK] Created references/email_personas.md")
 
     # Generate LinkedIn voice reference
     if linkedin:
@@ -478,42 +484,42 @@ def generate_skill(user_name: str, output_dir: Path) -> Path:
         linkedin_file = references_dir / "linkedin_voice.md"
         with open(linkedin_file, 'w') as f:
             f.write(linkedin_content)
-        print(f"   ✓ Created references/linkedin_voice.md")
+        print(f"   [OK] Created references/linkedin_voice.md")
 
     return skill_dir
 
 
 def show_status():
     """Show what data is available for skill generation."""
-    print(f"\n{'═' * 50}")
+    print(f"\n{'=' * 50}")
     print("SKILL GENERATION STATUS")
-    print(f"{'═' * 50}")
+    print(f"{'=' * 50}")
 
     # Check email personas
     if PERSONA_REGISTRY_FILE.exists():
         with open(PERSONA_REGISTRY_FILE) as f:
             data = json.load(f)
         personas = data.get('personas', {})
-        print(f"\n📧 Email Personas: {len(personas)}")
+        print(f"\n[EMAIL] Email Personas: {len(personas)}")
         for name, info in personas.items():
-            print(f"   • {name}: {info.get('sample_count', 0)} samples")
+            print(f"   - {name}: {info.get('sample_count', 0)} samples")
     else:
-        print(f"\n📧 Email Personas: None found")
+        print(f"\n[EMAIL] Email Personas: None found")
 
     # Check LinkedIn persona
     if LINKEDIN_PERSONA_FILE.exists():
         with open(LINKEDIN_PERSONA_FILE) as f:
             data = json.load(f)
-        print(f"\n🔗 LinkedIn Voice: Found")
+        print(f"\n[LINK] LinkedIn Voice: Found")
         print(f"   Confidence: {data.get('confidence', 'N/A')}")
         print(f"   Sample size: {data.get('sample_size', 'N/A')}")
     else:
-        print(f"\n🔗 LinkedIn Voice: None found")
+        print(f"\n[LINK] LinkedIn Voice: None found")
 
-    print(f"\n{'═' * 50}")
+    print(f"\n{'=' * 50}")
     print("\nTo generate the skill:")
     print("  python generate_skill.py --name <your-name>")
-    print(f"{'═' * 50}\n")
+    print(f"{'=' * 50}\n")
 
 
 def main():
@@ -544,13 +550,13 @@ Examples:
     # Get user name (required CLI argument)
     user_name = args.name
     if not user_name:
-        print("❌ Name is required. Use --name <your-name>")
+        print("[ERROR] Name is required. Use --name <your-name>")
         print("   Example: python generate_skill.py --name john")
         sys.exit(1)
 
     # Validate name
     if not user_name.replace('-', '').replace('_', '').isalnum():
-        print("❌ Name should only contain letters, numbers, hyphens, or underscores")
+        print("[ERROR] Name should only contain letters, numbers, hyphens, or underscores")
         return
 
     output_dir = Path(args.output)
@@ -560,29 +566,29 @@ Examples:
         validation = check_validation_complete()
 
         if not validation["phase1_complete"]:
-            print(f"\n{'═' * 60}")
-            print("❌ VALIDATION NOT COMPLETE")
-            print(f"{'═' * 60}")
+            print(f"\n{'=' * 60}")
+            print("[ERROR] VALIDATION NOT COMPLETE")
+            print(f"{'=' * 60}")
             print("\nYou must run validation before generating the skill.")
             print("\nRun:")
             print("  1. python prepare_validation.py")
             print("  2. python validate_personas.py --auto")
             print("  3. python validate_personas.py --review  (interactive)")
-            print(f"{'═' * 60}\n")
+            print(f"{'=' * 60}\n")
             sys.exit(1)
 
         if not validation["phase2_complete"]:
-            print(f"\n{'═' * 60}")
-            print("⚠️  INTERACTIVE VALIDATION NOT COMPLETE")
-            print(f"{'═' * 60}")
+            print(f"\n{'=' * 60}")
+            print("[WARNING]  INTERACTIVE VALIDATION NOT COMPLETE")
+            print(f"{'=' * 60}")
             print(f"""
 Phase 1 (automatic) validation is complete with score: {validation['score']}/100
 But interactive validation (Phase 2) was not completed.
 
 Without interactive validation:
-  • Personas may not sound like you in practice
-  • You'll spend more time fixing issues post-generation
-  • Lower quality output
+  - Personas may not sound like you in practice
+  - You'll spend more time fixing issues post-generation
+  - Lower quality output
 
 RECOMMENDED: Complete interactive validation first:
   python validate_personas.py --review
@@ -592,7 +598,7 @@ RECOMMENDED: Complete interactive validation first:
 TO PROCEED ANYWAY (not recommended):
   python generate_skill.py --name {user_name} --skip-validation-check
 """)
-            print(f"{'═' * 60}\n")
+            print(f"{'=' * 60}\n")
             sys.exit(1)
 
     # Check if we have any data
@@ -600,7 +606,7 @@ TO PROCEED ANYWAY (not recommended):
     linkedin = load_linkedin_persona()
 
     if not personas and not linkedin:
-        print("❌ No persona data found!")
+        print("[ERROR] No persona data found!")
         print("\nRun one of these pipelines first:")
         print("  Email:    python fetch_emails.py && ...")
         print("  LinkedIn: python fetch_linkedin_mcp.py --profile URL && ...")
@@ -608,32 +614,32 @@ TO PROCEED ANYWAY (not recommended):
         return
 
     # Generate the skill
-    print(f"\n{'═' * 60}")
+    print(f"\n{'=' * 60}")
     print("GENERATING WRITING CLONE SKILL")
-    print(f"{'═' * 60}\n")
+    print(f"{'=' * 60}\n")
 
     skill_dir = generate_skill(user_name, output_dir)
 
     # Success message with installation instructions
-    print(f"\n{'═' * 60}")
-    print("✅ WRITING CLONE SKILL GENERATED")
-    print(f"{'═' * 60}")
+    print(f"\n{'=' * 60}")
+    print("[OK] WRITING CLONE SKILL GENERATED")
+    print(f"{'=' * 60}")
     print(f"\nSkill created at: {skill_dir}")
     print(f"\nFiles generated:")
     for f in skill_dir.rglob("*"):
         if f.is_file():
-            print(f"   • {f.relative_to(skill_dir)}")
+            print(f"   - {f.relative_to(skill_dir)}")
 
-    print(f"\n{'─' * 60}")
-    print("📦 TO INSTALL THIS SKILL:")
-    print(f"{'─' * 60}")
+    print(f"\n{'-' * 60}")
+    print("[PACKAGE] TO INSTALL THIS SKILL:")
+    print(f"{'-' * 60}")
     print("\nOption 1: Ask the LLM to install it")
     print(f"   START A NEW CHAT and say:")
     print(f"   'Install my writing clone skill from {skill_dir}'")
     print()
     print("Option 2: Manual installation")
     print(f"   cp -r {skill_dir} ~/.claude/skills/")
-    print(f"{'═' * 60}\n")
+    print(f"{'=' * 60}\n")
 
 
 if __name__ == '__main__':

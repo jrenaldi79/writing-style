@@ -14,6 +14,12 @@ Usage:
     python fetch_emails.py --check                  # Verify MCP server is installed & authenticated
 """
 
+
+# Windows compatibility: ensure local imports work
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
 import subprocess
 import json
 import sys
@@ -22,10 +28,10 @@ from pathlib import Path
 from datetime import datetime
 
 # Configuration
-from config import get_data_dir, get_path
+from config import get_data_dir, get_path, get_npx_command
 from api_keys import is_mcp_configured_in_chatwise, KNOWN_MCPS
 
-MCP_COMMAND = ["npx", "-y", "@presto-ai/google-workspace-mcp"]
+MCP_COMMAND = [get_npx_command(), "-y", "@presto-ai/google-workspace-mcp"]
 DATA_DIR = get_data_dir()
 OUTPUT_DIR = get_path("raw_samples")
 VALIDATION_DIR = get_path("validation_set")
@@ -92,7 +98,7 @@ class MCPClient:
                 continue
 
     def initialize(self):
-        print("🔌 Connecting to Gmail MCP server...")
+        print("[CONNECT] Connecting to Gmail MCP server...")
         req_id = self.send_request("initialize", {
             "protocolVersion": "2024-11-05",
             "capabilities": {},
@@ -100,7 +106,7 @@ class MCPClient:
         })
         self.read_response(req_id)
         self.send_notification("notifications/initialized")
-        print("✅ Connected.")
+        print("[OK] Connected.")
 
     def call_tool(self, name, arguments):
         req_id = self.send_request("tools/call", {
@@ -126,16 +132,16 @@ def check_mcp_auth(verbose=True):
     # Check if MCP is configured in Chatwise
     if verbose:
         if is_mcp_configured_in_chatwise(KNOWN_MCPS["google-workspace"]):
-            print("✅ Google Workspace MCP is configured in Chatwise")
+            print("[OK] Google Workspace MCP is configured in Chatwise")
         else:
-            print("⚠️  Google Workspace MCP is not configured in Chatwise (will use npx directly)")
+            print("[WARNING]  Google Workspace MCP is not configured in Chatwise (will use npx directly)")
 
     # Check if npx is available
     if not shutil.which("npx"):
         return False, "npx not found. Please install Node.js first."
 
     if verbose:
-        print("🔍 Checking Google Workspace MCP server...")
+        print("[SEARCH] Checking Google Workspace MCP server...")
 
     try:
         client = MCPClient(MCP_COMMAND)
@@ -143,7 +149,7 @@ def check_mcp_auth(verbose=True):
 
         # Try a simple API call to verify authentication
         if verbose:
-            print("🔐 Verifying Gmail authentication...")
+            print("[AUTH] Verifying Gmail authentication...")
 
         # Search for just 1 email to test auth
         result_json = client.call_tool("gmail.search", {
@@ -179,14 +185,14 @@ def check_mcp_auth(verbose=True):
 
 def print_install_instructions():
     """Print instructions for installing the Google Workspace MCP server."""
-    print(f"\n{'═' * 60}")
+    print(f"\n{'=' * 60}")
     print("GOOGLE WORKSPACE MCP NOT CONFIGURED")
-    print(f"{'═' * 60}")
+    print(f"{'=' * 60}")
     print("\nThe email pipeline requires the Google Workspace MCP server")
     print("to be installed and authenticated in your chat client.\n")
-    print("📦 ONE-CLICK INSTALL (ChatWise users):")
+    print("[PACKAGE] ONE-CLICK INSTALL (ChatWise users):")
     print(f"   {CHATWISE_INSTALL_URL}\n")
-    print("📦 MANUAL INSTALL (other clients):")
+    print("[PACKAGE] MANUAL INSTALL (other clients):")
     print("   Add this to your MCP server configuration:")
     print('   {')
     print('     "google-workspace": {')
@@ -196,7 +202,7 @@ def print_install_instructions():
     print('   }')
     print("\nAfter installing, authenticate with your Google account")
     print("when prompted by the MCP server.")
-    print(f"{'═' * 60}\n")
+    print(f"{'=' * 60}\n")
 
 
 def load_state():
@@ -239,9 +245,9 @@ def show_status():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     file_count = len(list(OUTPUT_DIR.glob("email_*.json")))
     
-    print(f"\n{'═' * 50}")
+    print(f"\n{'=' * 50}")
     print("EMAIL FETCH STATUS")
-    print(f"{'═' * 50}")
+    print(f"{'=' * 50}")
     print(f"Emails downloaded: {file_count}")
     print(f"Location: {OUTPUT_DIR}")
     
@@ -256,12 +262,12 @@ def show_status():
         oldest = datetime.fromtimestamp(state["oldest_timestamp"] / 1000)
         print(f"Oldest email: {oldest.strftime('%Y-%m-%d %H:%M')}")
     
-    print(f"{'═' * 50}")
+    print(f"{'=' * 50}")
     print("\nCommands:")
     print("  python fetch_emails.py --count 100    # Fetch 100 emails")
     print("  python fetch_emails.py                # Fetch new emails")
     print("  python fetch_emails.py --older        # Fetch older emails")
-    print(f"{'═' * 50}\n")
+    print(f"{'=' * 50}\n")
 
 
 def fetch_emails(count=100, older=False, holdout=0.0):
@@ -286,14 +292,14 @@ def fetch_emails(count=100, older=False, holdout=0.0):
         # Get emails older than our oldest
         oldest_date = datetime.fromtimestamp(state["oldest_timestamp"] / 1000)
         query += f" before:{oldest_date.strftime('%Y/%m/%d')}"
-        print(f"🔍 Fetching emails older than {oldest_date.strftime('%Y-%m-%d')}...")
+        print(f"[SEARCH] Fetching emails older than {oldest_date.strftime('%Y-%m-%d')}...")
     elif not older and state["newest_timestamp"]:
         # Get emails newer than our newest
         newest_date = datetime.fromtimestamp(state["newest_timestamp"] / 1000)
         query += f" after:{newest_date.strftime('%Y/%m/%d')}"
-        print(f"🔍 Fetching emails newer than {newest_date.strftime('%Y-%m-%d')}...")
+        print(f"[SEARCH] Fetching emails newer than {newest_date.strftime('%Y-%m-%d')}...")
     else:
-        print(f"🔍 Fetching {count} most recent emails...")
+        print(f"[SEARCH] Fetching {count} most recent emails...")
     
     client = MCPClient(MCP_COMMAND)
     
@@ -354,7 +360,7 @@ def fetch_emails(count=100, older=False, holdout=0.0):
             
             downloaded += 1
             snippet = email_data.get("snippet", "")[:40]
-            print(f"  ✓ {msg_id}: {snippet}...")
+            print(f"  [OK] {msg_id}: {snippet}...")
 
         # Update state
         if timestamps:
@@ -368,24 +374,24 @@ def fetch_emails(count=100, older=False, holdout=0.0):
         save_state(state)
 
         # Report
-        print(f"\n{'═' * 50}")
+        print(f"\n{'=' * 50}")
         print(f"FETCH COMPLETE")
-        print(f"{'═' * 50}")
+        print(f"{'=' * 50}")
         print(f"Downloaded: {downloaded} new emails")
         print(f"Skipped: {skipped} (already existed)")
         print(f"Total in collection: {state['total_fetched']}")
         print(f"Location: {OUTPUT_DIR}")
-        print(f"{'═' * 50}")
+        print(f"{'=' * 50}")
         
         if downloaded > 0:
-            print(f"\n💡 Next steps:")
-            print(f"   • Run again with --older to fetch more history")
-            print(f"   • Start analysis in ChatWise: 'Continue cloning my writing style'")
+            print(f"\n[TIP] Next steps:")
+            print(f"   - Run again with --older to fetch more history")
+            print(f"   - Start analysis in ChatWise: 'Continue cloning my writing style'")
         
         return downloaded
 
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\n[ERROR] Error: {e}")
         return 0
     finally:
         client.close()
@@ -423,10 +429,10 @@ Examples:
         # Just run the check and exit
         success, message = check_mcp_auth(verbose=True)
         if success:
-            print(f"\n✅ {message}")
+            print(f"\n[OK] {message}")
             sys.exit(0)
         else:
-            print(f"\n❌ {message}")
+            print(f"\n[ERROR] {message}")
             print_install_instructions()
             sys.exit(1)
     elif args.status:
@@ -436,9 +442,9 @@ Examples:
         if not args.skip_check:
             success, message = check_mcp_auth(verbose=True)
             if not success:
-                print(f"\n❌ {message}")
+                print(f"\n[ERROR] {message}")
                 print_install_instructions()
                 sys.exit(1)
-            print(f"✅ {message}\n")
+            print(f"[OK] {message}\n")
 
         fetch_emails(count=args.count, older=args.older, holdout=args.holdout)

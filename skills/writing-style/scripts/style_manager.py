@@ -62,7 +62,7 @@ def init(data_dir: str) -> Path:
         with open(REGISTRY_PATH, "w") as f:
             json.dump(registry, f, indent=2)
     
-    print(f"✓ Style Manager initialized: {BASE_DIR}")
+    print(f"[OK] Style Manager initialized: {BASE_DIR}")
     return BASE_DIR
 
 
@@ -110,7 +110,7 @@ def save_sample(
     
     content_hash = hash_content(full_text)
     if sample_exists(content_hash):
-        print(f"⚠ Duplicate (hash: {content_hash}), skipping")
+        print(f"[WARNING] Duplicate (hash: {content_hash}), skipping")
         return None
     
     registry = load_registry()
@@ -137,7 +137,7 @@ def save_sample(
         registry["unassigned_samples"].append(sample_id)
     
     save_registry(registry)
-    print(f"✓ Saved {sample_id}")
+    print(f"[OK] Saved {sample_id}")
     return sample
 
 
@@ -186,7 +186,7 @@ def create_persona(
                 json.dump(sample, f, indent=2)
     
     save_registry(registry)
-    print(f"✓ Created persona: {name} ({persona_id}) with {len(sample_ids)} samples")
+    print(f"[OK] Created persona: {name} ({persona_id}) with {len(sample_ids)} samples")
     return persona
 
 
@@ -233,7 +233,7 @@ def update_persona(
     
     persona["updated_at"] = datetime.now().isoformat()
     save_registry(registry)
-    print(f"✓ Updated {persona['name']}: {persona['sample_count']} samples")
+    print(f"[OK] Updated {persona['name']}: {persona['sample_count']} samples")
     return persona
 
 
@@ -302,7 +302,7 @@ def merge_personas(keep_id: str, merge_id: str, new_name: Optional[str] = None) 
                 json.dump(sample, f, indent=2)
     
     save_registry(registry)
-    print(f"✓ Merged '{merge['name']}' into '{keep['name']}'")
+    print(f"[OK] Merged '{merge['name']}' into '{keep['name']}'")
     return keep
 
 
@@ -315,9 +315,9 @@ def get_persona_summary() -> str:
         return "No personas discovered yet."
     
     lines = [
-        "═" * 40,
+        "=" * 40,
         "PERSONA SUMMARY",
-        "═" * 40,
+        "=" * 40,
         f"Total samples: {registry['total_samples']}",
         f"  Email: {registry['samples_by_source'].get('email', 0)}",
         f"  LinkedIn: {registry['samples_by_source'].get('linkedin', 0)}",
@@ -325,7 +325,7 @@ def get_persona_summary() -> str:
         f"Flagged: {len(registry.get('flagged_samples', []))}",
         "",
         f"PERSONAS ({len(registry['personas'])}):",
-        "─" * 40
+        "-" * 40
     ]
     
     for p in registry["personas"]:
@@ -334,7 +334,7 @@ def get_persona_summary() -> str:
         lines.append(f"  Tone: {', '.join(p['characteristics'].get('tone', []))}")
         lines.append(f"  Formality: {p['characteristics'].get('formality', 'unknown')}")
     
-    lines.append("═" * 40)
+    lines.append("=" * 40)
     return "\n".join(lines)
 
 

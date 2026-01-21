@@ -315,9 +315,9 @@ def get_current_phase(sync_first: bool = True) -> str:
 def _status_icon(status: str) -> str:
     """Get icon for status."""
     icons = {
-        "complete": "✅",
+        "complete": "[OK]",
         "pending": "⬚",
-        "error": "❌",
+        "error": "[ERROR]",
         "unknown": "?"
     }
     return icons.get(status, "?")
@@ -350,7 +350,7 @@ def _format_step(name: str, step: dict, indent: int = 2) -> list[str]:
 
     # Show error if any
     if step.get("error"):
-        lines.append(f"{prefix}  ⚠️  {step['error']}")
+        lines.append(f"{prefix}  [WARNING]  {step['error']}")
 
     return lines
 
@@ -361,9 +361,9 @@ def show_status(state: dict = None) -> str:
         state = load_state(sync_first=True)
 
     lines = [
-        "═" * 60,
+        "=" * 60,
         "WRITING STYLE CLONE - PIPELINE STATUS",
-        "═" * 60,
+        "=" * 60,
         f"Current Phase: {state.get('current_phase', 'unknown').upper()}",
         f"Data Directory: {state.get('data_dir', 'unknown')}",
         f"Last Synced: {state.get('last_synced', 'never')}",
@@ -371,20 +371,20 @@ def show_status(state: dict = None) -> str:
     ]
 
     # Preprocessing
-    lines.append("📥 PREPROCESSING")
+    lines.append("[IMPORT] PREPROCESSING")
     prep = state.get("preprocessing", {})
     for step_name in ["fetch", "filter", "enrich", "embed", "cluster"]:
         lines.extend(_format_step(step_name, prep.get(step_name, {})))
     lines.append("")
 
     # Analysis
-    lines.append("🔍 ANALYSIS")
+    lines.append("[SEARCH] ANALYSIS")
     analysis = state.get("analysis", {})
     lines.extend(_format_step("personas", analysis.get("personas", {})))
     lines.append("")
 
     # Validation
-    lines.append("✓ VALIDATION (Two Phases)")
+    lines.append("[OK] VALIDATION (Two Phases)")
     val = state.get("validation", {})
     lines.extend(_format_step("pairs", val.get("pairs", {})))
     lines.extend(_format_step("Phase 1: auto", val.get("report", {})))
@@ -392,14 +392,14 @@ def show_status(state: dict = None) -> str:
     lines.append("")
 
     # LinkedIn
-    lines.append("💼 LINKEDIN (Optional)")
+    lines.append("[WORK] LINKEDIN (Optional)")
     linkedin = state.get("linkedin", {})
     lines.extend(_format_step("fetch", linkedin.get("fetch", {})))
     lines.extend(_format_step("persona", linkedin.get("persona", {})))
     lines.append("")
 
     # Generation
-    lines.append("📦 GENERATION")
+    lines.append("[PACKAGE] GENERATION")
     gen = state.get("generation", {})
     lines.extend(_format_step("skill", gen.get("skill", {})))
     lines.append("")
@@ -408,9 +408,9 @@ def show_status(state: dict = None) -> str:
     config = state.get("config", {})
     model_config = config.get("openrouter_model", {})
     if model_config.get("status") == "complete":
-        lines.append(f"⚙️  OpenRouter Model: {model_config.get('model', 'default')}")
+        lines.append(f"[CONFIG]  OpenRouter Model: {model_config.get('model', 'default')}")
 
-    lines.append("═" * 60)
+    lines.append("=" * 60)
 
     # Next step suggestion
     phase = state.get("current_phase", "setup")
@@ -423,7 +423,7 @@ def show_status(state: dict = None) -> str:
         "generation": "Run: python generate_skill.py --name <your-name>",
         "complete": "Pipeline complete! Your skill is ready."
     }
-    lines.append(f"\n💡 Next: {next_steps.get(phase, 'Unknown phase')}")
+    lines.append(f"\n[TIP] Next: {next_steps.get(phase, 'Unknown phase')}")
 
     return "\n".join(lines)
 
@@ -475,9 +475,9 @@ Examples:
     args = parser.parse_args()
 
     if args.sync:
-        print("🔄 Syncing state from report files...")
+        print("[UPDATE] Syncing state from report files...")
         state = sync_state()
-        print(f"✅ State synced. Current phase: {state['current_phase'].upper()}")
+        print(f"[OK] State synced. Current phase: {state['current_phase'].upper()}")
         print(f"   Saved to: {get_path('state.json')}")
 
     elif args.status:

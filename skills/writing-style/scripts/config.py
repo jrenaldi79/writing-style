@@ -14,6 +14,7 @@ Usage:
 """
 
 import os
+import platform
 from pathlib import Path
 from functools import lru_cache
 
@@ -50,3 +51,15 @@ def get_path(*subdirs: str) -> Path:
         get_path('clusters', 'email_clusters.json')
     """
     return get_data_dir() / Path(*subdirs)
+
+
+def get_npx_command() -> str:
+    """
+    Get platform-appropriate npx command.
+
+    On Windows, npx is invoked as 'npx.cmd' rather than 'npx'.
+
+    Returns:
+        str: 'npx.cmd' on Windows, 'npx' on other platforms
+    """
+    return "npx.cmd" if platform.system() == "Windows" else "npx"

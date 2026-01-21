@@ -12,6 +12,12 @@ Usage:
     python3 prepare_llm_analysis.py --output custom_output.md
 """
 
+
+# Windows compatibility: ensure local imports work
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
 import json
 import argparse
 from pathlib import Path
@@ -224,7 +230,7 @@ def main():
     with open(output_path, 'w') as f:
         f.write(output)
 
-    print(f"\n✅ Generated: {output_path}")
+    print(f"\n[OK] Generated: {output_path}")
     print(f"   Posts included: {len(posts)}")
     print(f"   File size: {len(output):,} characters")
     print("")

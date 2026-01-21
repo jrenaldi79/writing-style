@@ -183,7 +183,7 @@ def main():
     sorted_posts = sorted(stats['posts'], key=lambda x: x['likes'], reverse=True)
     for post in sorted_posts[:5]:
         holdout_tag = " [HOLDOUT]" if post['holdout'] else ""
-        print(f"  • {post['id']}: {post['likes']} likes, {post['length']} chars{holdout_tag}")
+        print(f"  - {post['id']}: {post['likes']} likes, {post['length']} chars{holdout_tag}")
     
     print("="*60)
     

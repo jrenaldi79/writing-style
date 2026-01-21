@@ -15,6 +15,12 @@ Requirements:
     pip install numpy scikit-learn hdbscan
 """
 
+
+# Windows compatibility: ensure local imports work
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
 import json
 import argparse
 from pathlib import Path
@@ -45,7 +51,7 @@ def check_dependencies():
         missing.append('scikit-learn')
     
     if missing:
-        print(f"❌ Missing dependencies: {', '.join(missing)}")
+        print(f"[ERROR] Missing dependencies: {', '.join(missing)}")
         print(f"\nInstall with:")
         print(f"  pip install {' '.join(missing)}")
         sys.exit(1)
@@ -56,12 +62,12 @@ def load_embeddings() -> Tuple[any, Dict]:
     import numpy as np
     
     if not EMBEDDINGS_FILE.exists():
-        print(f"❌ Embeddings not found: {EMBEDDINGS_FILE}")
+        print(f"[ERROR] Embeddings not found: {EMBEDDINGS_FILE}")
         print("   Run embed_emails.py first.")
         sys.exit(1)
     
     if not INDEX_FILE.exists():
-        print(f"❌ Index not found: {INDEX_FILE}")
+        print(f"[ERROR] Index not found: {INDEX_FILE}")
         sys.exit(1)
     
     embeddings = np.load(EMBEDDINGS_FILE)
@@ -85,7 +91,7 @@ def find_optimal_k(embeddings, max_k: int = 10) -> int:
     inertias = []
     k_range = range(2, max_k + 1)
     
-    print("🔍 Finding optimal k (elbow method)...")
+    print("[SEARCH] Finding optimal k (elbow method)...")
     for k in k_range:
         kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
         kmeans.fit(embeddings)
@@ -119,7 +125,7 @@ def cluster_kmeans(embeddings, k: Optional[int] = None) -> Tuple[List[int], Dict
     if k is None:
         k = find_optimal_k(embeddings)
     
-    print(f"\n🔮 Running K-Means with k={k}...")
+    print(f"\n[CLUSTER] Running K-Means with k={k}...")
     kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
     labels = kmeans.fit_predict(embeddings)
     
@@ -155,14 +161,14 @@ def cluster_hdbscan(embeddings, min_cluster_size: int = 5) -> Tuple[List[int], D
     try:
         import hdbscan
     except ImportError:
-        print("❌ HDBSCAN not installed. Install with: pip install hdbscan")
+        print("[ERROR] HDBSCAN not installed. Install with: pip install hdbscan")
         print("   Falling back to K-Means...")
         return cluster_kmeans(embeddings)
     
     from sklearn.metrics import silhouette_score
     import numpy as np
     
-    print(f"\n🔮 Running HDBSCAN (min_cluster_size={min_cluster_size})...")
+    print(f"\n[CLUSTER] Running HDBSCAN (min_cluster_size={min_cluster_size})...")
     
     clusterer = hdbscan.HDBSCAN(
         min_cluster_size=min_cluster_size,
@@ -261,7 +267,7 @@ def run_clustering(algorithm: str = 'auto', k: Optional[int] = None,
     import numpy as np
     
     embeddings, index = load_embeddings()
-    print(f"📊 Loaded {len(embeddings)} embeddings")
+    print(f"[STATS] Loaded {len(embeddings)} embeddings")
     
     # Auto-select algorithm
     if algorithm == 'auto':
@@ -274,7 +280,7 @@ def run_clustering(algorithm: str = 'auto', k: Optional[int] = None,
                 algorithm = 'kmeans'
         except ImportError:
             algorithm = 'kmeans'
-        print(f"🤖 Auto-selected algorithm: {algorithm}")
+        print(f"[AUTO] Auto-selected algorithm: {algorithm}")
     
     # Run clustering
     if algorithm == 'hdbscan':
@@ -332,9 +338,9 @@ def run_clustering(algorithm: str = 'auto', k: Optional[int] = None,
         json.dump(result, f, indent=2)
     
     # Print summary
-    print(f"\n{'═' * 50}")
+    print(f"\n{'=' * 50}")
     print("CLUSTERING COMPLETE")
-    print(f"{'═' * 50}")
+    print(f"{'=' * 50}")
     print(f"Algorithm: {metadata['algorithm']}")
     print(f"Emails: {len(embeddings)}")
     print(f"Clusters: {result['n_clusters']}")
@@ -344,20 +350,20 @@ def run_clustering(algorithm: str = 'auto', k: Optional[int] = None,
     print(f"\nCluster breakdown:")
     for c in clusters:
         if c['is_noise']:
-            print(f"  • [NOISE]: {c['size']} emails")
+            print(f"  - [NOISE]: {c['size']} emails")
         else:
             top_audience = max(c['enrichment_summary']['audiences'].items(), 
                              key=lambda x: x[1])[0] if c['enrichment_summary']['audiences'] else '?'
             top_type = max(c['enrichment_summary']['recipient_types'].items(),
                           key=lambda x: x[1])[0] if c['enrichment_summary']['recipient_types'] else '?'
-            print(f"  • Cluster {c['id']}: {c['size']} emails ({top_type}, {top_audience})")
+            print(f"  - Cluster {c['id']}: {c['size']} emails ({top_type}, {top_audience})")
             print(f"    Examples: {', '.join(c['centroid_emails'][:2])}")
-    print(f"{'═' * 50}")
-    print(f"\n💾 Results saved to: {CLUSTERS_FILE}")
+    print(f"{'=' * 50}")
+    print(f"\n[SAVE] Results saved to: {CLUSTERS_FILE}")
 
-    # ═══════════════════════════════════════════════════════════
+    # ===========================================================
     # CLUSTER HEALTH CHECK - Automated quality assessment
-    # ═══════════════════════════════════════════════════════════
+    # ===========================================================
     n_clusters = result['n_clusters']
     n_noise = result['n_noise']
     total_emails = len(embeddings)
@@ -410,60 +416,60 @@ def run_clustering(algorithm: str = 'auto', k: Optional[int] = None,
         })
 
     # Print health check results
-    print(f"\n{'═' * 60}")
+    print(f"\n{'=' * 60}")
     print("🩺 CLUSTER HEALTH CHECK")
-    print(f"{'═' * 60}")
+    print(f"{'=' * 60}")
 
     if not health_issues:
-        print(f"\n✅ HEALTHY: {n_clusters} clusters with {noise_ratio:.0%} noise")
+        print(f"\n[OK] HEALTHY: {n_clusters} clusters with {noise_ratio:.0%} noise")
         print("   Your clustering results look good! Proceed to Session 2.")
     else:
-        print(f"\n📊 Results: {n_clusters} clusters, {noise_ratio:.0%} noise")
+        print(f"\n[STATS] Results: {n_clusters} clusters, {noise_ratio:.0%} noise")
         print()
 
         for issue in health_issues:
-            icon = "⚠️" if issue['severity'] == 'warning' else "ℹ️"
+            icon = "[WARNING]" if issue['severity'] == 'warning' else "ℹ"
             print(f"   {icon} {issue['message']}")
-            print(f"      → {issue['suggestion']}")
+            print(f"      -> {issue['suggestion']}")
             print()
 
         # Provide specific recommendations based on issues
-        print(f"{'─' * 60}")
-        print("💡 RECOMMENDED ACTIONS:")
-        print(f"{'─' * 60}")
+        print(f"{'-' * 60}")
+        print("[TIP] RECOMMENDED ACTIONS:")
+        print(f"{'-' * 60}")
 
         if any(i['type'] == 'few_clusters' for i in health_issues):
             print("\n   Option A (Recommended): Force more clusters with K-Means")
-            print("   └─ venv/bin/python3 cluster_emails.py --algorithm kmeans -k 5")
+            print("   └- venv/bin/python3 cluster_emails.py --algorithm kmeans -k 5")
             print()
             print("   Option B: Adjust HDBSCAN sensitivity")
-            print("   └─ venv/bin/python3 cluster_emails.py --min-cluster 3")
+            print("   └- venv/bin/python3 cluster_emails.py --min-cluster 3")
             print()
             print("   Option C: Fetch more email history")
-            print("   └─ venv/bin/python3 fetch_emails.py --count 500 --holdout 0.15")
+            print("   └- venv/bin/python3 fetch_emails.py --count 500 --holdout 0.15")
             print("      (then re-run filter, enrich, embed, cluster)")
 
         if any(i['type'] == 'high_noise' for i in health_issues):
             print("\n   Recommended: Switch to K-Means (no noise)")
-            print("   └─ venv/bin/python3 cluster_emails.py --algorithm kmeans -k 5")
+            print("   └- venv/bin/python3 cluster_emails.py --algorithm kmeans -k 5")
 
         if any(i['type'] == 'many_clusters' for i in health_issues):
             print("\n   Recommended: Increase minimum cluster size")
-            print("   └─ venv/bin/python3 cluster_emails.py --min-cluster 8")
+            print("   └- venv/bin/python3 cluster_emails.py --min-cluster 8")
             print("   Or use K-Means with fewer clusters:")
-            print("   └─ venv/bin/python3 cluster_emails.py --algorithm kmeans -k 5")
+            print("   └- venv/bin/python3 cluster_emails.py --algorithm kmeans -k 5")
 
         print()
         print("   Or proceed anyway if these clusters make sense for your writing.")
 
-    print(f"{'═' * 60}")
+    print(f"{'=' * 60}")
 
     # Quick reference for cluster count guidance
-    print(f"\n📈 CLUSTER COUNT GUIDE:")
-    print(f"   • 100-200 emails → aim for 3-4 clusters")
-    print(f"   • 200-500 emails → aim for 4-6 clusters")
-    print(f"   • 500+ emails   → aim for 5-8 clusters")
-    print(f"   You have {total_emails} emails → suggested range: ", end="")
+    print(f"\n[PROGRESS] CLUSTER COUNT GUIDE:")
+    print(f"   - 100-200 emails -> aim for 3-4 clusters")
+    print(f"   - 200-500 emails -> aim for 4-6 clusters")
+    print(f"   - 500+ emails   -> aim for 5-8 clusters")
+    print(f"   You have {total_emails} emails -> suggested range: ", end="")
     if total_emails < 200:
         print("3-4 clusters")
     elif total_emails < 500:
@@ -472,10 +478,10 @@ def run_clustering(algorithm: str = 'auto', k: Optional[int] = None,
         print("5-8 clusters")
 
     # Session boundary and feedback checkpoint
-    print(f"\n{'═' * 60}")
-    print("🛑 SESSION 1 COMPLETE - CHECKPOINT")
-    print(f"{'═' * 60}")
-    print("\n📊 CLUSTER SUMMARY - Review before proceeding:\n")
+    print(f"\n{'=' * 60}")
+    print("[STOP] SESSION 1 COMPLETE - CHECKPOINT")
+    print(f"{'=' * 60}")
+    print("\n[STATS] CLUSTER SUMMARY - Review before proceeding:\n")
 
     for c in clusters:
         if c['is_noise']:
@@ -485,7 +491,7 @@ def run_clustering(algorithm: str = 'auto', k: Optional[int] = None,
         top_type = max(enrichment['recipient_types'].items(), key=lambda x: x[1])[0] if enrichment['recipient_types'] else 'unknown'
 
         # Predict persona type based on enrichment
-        persona_hint = f"{top_type} → {top_audience}"
+        persona_hint = f"{top_type} -> {top_audience}"
         print(f"  Cluster {c['id']}: {c['size']} emails")
         print(f"    Likely persona: {persona_hint}")
         print(f"    Recipient types: {enrichment['recipient_types']}")
@@ -493,31 +499,31 @@ def run_clustering(algorithm: str = 'auto', k: Optional[int] = None,
         print(f"    Example emails: {', '.join(c['centroid_emails'][:2])}")
         print()
 
-    print(f"{'─' * 60}")
-    print("🤔 FEEDBACK CHECKPOINT:")
-    print(f"{'─' * 60}")
+    print(f"{'-' * 60}")
+    print("[THINK] FEEDBACK CHECKPOINT:")
+    print(f"{'-' * 60}")
     print("Review the clusters above. Consider:")
-    print("  • Do these groupings make sense for your communication styles?")
-    print("  • Too few clusters? Try: --min-cluster 3 (smaller clusters)")
-    print("  • Too many clusters? Try: --min-cluster 8 (larger clusters)")
-    print("  • Want specific count? Try: --algorithm kmeans -k 5")
+    print("  - Do these groupings make sense for your communication styles?")
+    print("  - Too few clusters? Try: --min-cluster 3 (smaller clusters)")
+    print("  - Too many clusters? Try: --min-cluster 8 (larger clusters)")
+    print("  - Want specific count? Try: --algorithm kmeans -k 5")
     print()
     print("If clusters look good, proceed to persona analysis.")
-    print(f"{'─' * 60}")
+    print(f"{'-' * 60}")
 
     # Check for validation set
     validation_dir = get_path("validation_set")
     validation_count = len(list(validation_dir.glob("*.json"))) if validation_dir.exists() else 0
 
-    print(f"\n{'═' * 60}")
-    print("👉 ACTION REQUIRED: START A NEW CHAT")
-    print(f"{'═' * 60}")
+    print(f"\n{'=' * 60}")
+    print("-> ACTION REQUIRED: START A NEW CHAT")
+    print(f"{'=' * 60}")
     print("Preprocessing is complete. Your context window now contains")
     print("logs from fetching, filtering, and clustering.")
     print()
     if validation_count > 0:
         total_with_validation = sum(c['size'] for c in clusters) + validation_count
-        print(f"📊 DATA SPLIT:")
+        print(f"[STATS] DATA SPLIT:")
         print(f"   Training set:    {sum(c['size'] for c in clusters)} emails (for persona analysis)")
         print(f"   Validation set:  {validation_count} emails (held out for blind testing)")
         print()
@@ -531,31 +537,31 @@ def run_clustering(algorithm: str = 'auto', k: Optional[int] = None,
         print("  4. Run: python validate_personas.py --auto")
         print()
     print("State is saved - no progress will be lost.")
-    print(f"{'═' * 60}\n")
+    print(f"{'=' * 60}\n")
 
     return result
 
 
 def show_status():
     """Show current clustering status."""
-    print(f"\n{'═' * 50}")
+    print(f"\n{'=' * 50}")
     print("CLUSTERING STATUS")
-    print(f"{'═' * 50}")
+    print(f"{'=' * 50}")
     
     if EMBEDDINGS_FILE.exists():
         with open(INDEX_FILE) as f:
             index = json.load(f)
         print(f"Embeddings: {index.get('count', '?')} emails")
     else:
-        print("❌ No embeddings found. Run embed_emails.py first.")
-        print(f"{'═' * 50}\n")
+        print("[ERROR] No embeddings found. Run embed_emails.py first.")
+        print(f"{'=' * 50}\n")
         return
     
     if CLUSTERS_FILE.exists():
         with open(CLUSTERS_FILE) as f:
             clusters = json.load(f)
         
-        print(f"\n✅ Clusters exist")
+        print(f"\n[OK] Clusters exist")
         print(f"   Algorithm: {clusters.get('algorithm', '?')}")
         print(f"   Clusters: {clusters.get('n_clusters', '?')}")
         print(f"   Noise: {clusters.get('n_noise', 0)}")
@@ -565,13 +571,13 @@ def show_status():
         print(f"\nCluster sizes:")
         for c in clusters.get('clusters', []):
             if c['is_noise']:
-                print(f"  • [NOISE]: {c['size']} emails")
+                print(f"  - [NOISE]: {c['size']} emails")
             else:
-                print(f"  • Cluster {c['id']}: {c['size']} emails")
+                print(f"  - Cluster {c['id']}: {c['size']} emails")
     else:
-        print("\n❌ No clusters found. Run cluster_emails.py")
+        print("\n[ERROR] No clusters found. Run cluster_emails.py")
     
-    print(f"{'═' * 50}\n")
+    print(f"{'=' * 50}\n")
 
 
 if __name__ == '__main__':

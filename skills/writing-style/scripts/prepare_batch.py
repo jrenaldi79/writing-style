@@ -12,6 +12,12 @@ Usage:
     python prepare_batch.py --legacy --count 30 # Legacy mode (random emails)
 """
 
+
+# Windows compatibility: ensure local imports work
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
 import json
 import argparse
 import base64
@@ -159,7 +165,7 @@ def prepare_cluster_batch(cluster_id: int) -> str:
     """Prepare a batch from a specific cluster."""
     clusters_data = load_cluster_data()
     if not clusters_data:
-        return "❌ No clusters found. Run: python cluster_emails.py"
+        return "[ERROR] No clusters found. Run: python cluster_emails.py"
     
     # Find the cluster
     cluster = None
@@ -169,10 +175,10 @@ def prepare_cluster_batch(cluster_id: int) -> str:
             break
     
     if not cluster:
-        return f"❌ Cluster {cluster_id} not found"
+        return f"[ERROR] Cluster {cluster_id} not found"
     
     if cluster.get('is_noise'):
-        return f"⚠️ Cluster {cluster_id} is noise (unclustered emails)"
+        return f"[WARNING] Cluster {cluster_id} is noise (unclustered emails)"
     
     # Get already analyzed IDs
     analyzed = get_analyzed_ids()
@@ -186,18 +192,18 @@ def prepare_cluster_batch(cluster_id: int) -> str:
     coverage = analyzed_count / len(sample_ids) if sample_ids else 0
 
     if coverage > 0 and coverage < 1.0:
-        print(f"\n{'─' * 50}")
-        print(f"📊 CLUSTER {cluster_id} COVERAGE: {coverage:.0%}")
+        print(f"\n{'-' * 50}")
+        print(f"[STATS] CLUSTER {cluster_id} COVERAGE: {coverage:.0%}")
         print(f"   Analyzed: {analyzed_count} / {len(sample_ids)} emails")
         print(f"   Remaining: {len(unanalyzed)} emails")
         if coverage < 0.8:
-            print(f"\n   ⚠️  WARNING: Coverage below 80%")
+            print(f"\n   [WARNING]  WARNING: Coverage below 80%")
             print(f"   Persona quality may suffer with incomplete data.")
             print(f"   Run prepare_batch.py again after ingest to get remaining emails.")
-        print(f"{'─' * 50}\n")
+        print(f"{'-' * 50}\n")
 
     if not unanalyzed:
-        return f"✅ Cluster {cluster_id} fully analyzed ({len(sample_ids)} emails)"
+        return f"[OK] Cluster {cluster_id} fully analyzed ({len(sample_ids)} emails)"
     
     # Load and format emails
     emails = []
@@ -210,7 +216,7 @@ def prepare_cluster_batch(cluster_id: int) -> str:
             emails.append(format_email_for_analysis(email_id, enriched_data))
     
     if not emails:
-        return f"⚠️ No loadable emails in cluster {cluster_id}"
+        return f"[WARNING] No loadable emails in cluster {cluster_id}"
     
     # Build output
     output = []
@@ -304,7 +310,7 @@ def prepare_cluster_batch(cluster_id: int) -> str:
         "punctuation": ["em-dashes", "exclamations"],
         "contractions": true,
         "notable_phrases": ["phrase1", "phrase2"],
-        "structure": "greeting → content → close"
+        "structure": "greeting -> content -> close"
       },
       "context": {
         "recipient_type": "small_group",
@@ -331,14 +337,14 @@ def prepare_legacy_batch(count: int = 30) -> str:
     # Find source directory
     source_dir = ENRICHED_DIR if ENRICHED_DIR.exists() else RAW_DIR
     if not source_dir.exists():
-        return f"❌ No email samples found in {source_dir}"
+        return f"[ERROR] No email samples found in {source_dir}"
     
     # Get unanalyzed emails
     all_files = list(source_dir.glob('email_*.json'))
     unanalyzed = [f for f in all_files if f.stem not in analyzed]
     
     if not unanalyzed:
-        return "✅ All emails have been analyzed!"
+        return "[OK] All emails have been analyzed!"
     
     # Take requested count
     batch_files = unanalyzed[:count]
@@ -354,7 +360,7 @@ def prepare_legacy_batch(count: int = 30) -> str:
             continue
     
     if not emails:
-        return "❌ No loadable emails found"
+        return "[ERROR] No loadable emails found"
     
     # Build output
     output = []
@@ -390,13 +396,13 @@ def show_clusters_status():
     clusters_data = load_cluster_data()
     analyzed = get_analyzed_ids()
     
-    print(f"\n{'═' * 50}")
+    print(f"\n{'=' * 50}")
     print("CLUSTER STATUS")
-    print(f"{'═' * 50}")
+    print(f"{'=' * 50}")
     
     if not clusters_data:
-        print("❌ No clusters found. Run: python cluster_emails.py")
-        print(f"{'═' * 50}\n")
+        print("[ERROR] No clusters found. Run: python cluster_emails.py")
+        print(f"{'=' * 50}\n")
         return
     
     print(f"Algorithm: {clusters_data.get('algorithm', '?')}")
@@ -415,13 +421,13 @@ def show_clusters_status():
 
         # Status with coverage indicator
         if unanalyzed == 0:
-            status = "✅ Complete"
+            status = "[OK] Complete"
         elif analyzed_count == 0:
-            status = f"⏳ Not started ({len(sample_ids)} emails)"
+            status = f"[WAIT] Not started ({len(sample_ids)} emails)"
         elif coverage >= 0.8:
-            status = f"⏳ {coverage:.0%} coverage ({unanalyzed} remaining)"
+            status = f"[WAIT] {coverage:.0%} coverage ({unanalyzed} remaining)"
         else:
-            status = f"⚠️  {coverage:.0%} coverage ({unanalyzed} remaining) - BELOW 80%"
+            status = f"[WARNING]  {coverage:.0%} coverage ({unanalyzed} remaining) - BELOW 80%"
 
         # Get top characteristics
         enrichment = cluster.get('enrichment_summary', {})
@@ -439,11 +445,11 @@ def show_clusters_status():
         noise = noise_clusters[0]
         print(f"\n  [NOISE]: {noise['size']} unclustered emails")
     
-    print(f"\n{'═' * 50}")
+    print(f"\n{'=' * 50}")
     print("\nCommands:")
     print("  python prepare_batch.py                # Next unanalyzed cluster")
     print("  python prepare_batch.py --cluster N    # Specific cluster")
-    print(f"{'═' * 50}\n")
+    print(f"{'=' * 50}\n")
 
 
 def find_next_cluster() -> Optional[int]:
@@ -512,16 +518,16 @@ def show_coverage_calculation(target_coverage: float = 0.8):
     """
     clusters_data = load_cluster_data()
     if not clusters_data:
-        print("❌ No clusters found. Run: python cluster_emails.py")
+        print("[ERROR] No clusters found. Run: python cluster_emails.py")
         return
 
     analyzed = get_analyzed_ids()
 
-    print(f"\n{'═' * 60}")
+    print(f"\n{'=' * 60}")
     print(f"BATCH SIZE REQUIREMENTS ({target_coverage:.0%} COVERAGE TARGET)")
-    print(f"{'═' * 60}")
+    print(f"{'=' * 60}")
     print(f"\nFormula: Required Emails = ceil(Cluster Size × {target_coverage})")
-    print(f"\n{'─' * 60}")
+    print(f"\n{'-' * 60}")
 
     total_required = 0
     total_analyzed = 0
@@ -544,26 +550,26 @@ def show_coverage_calculation(target_coverage: float = 0.8):
 
         # Status indicator
         if analyzed_count >= required:
-            status = "✅"
+            status = "[OK]"
         elif analyzed_count > 0:
-            status = "⏳"
+            status = "[WAIT]"
         else:
             status = "⬚"
 
-        print(f"  {status} Cluster {cid}: {size} emails → Need {required} ({analyzed_count} done, {coverage:.0%})")
+        print(f"  {status} Cluster {cid}: {size} emails -> Need {required} ({analyzed_count} done, {coverage:.0%})")
 
-    print(f"{'─' * 60}")
+    print(f"{'-' * 60}")
     overall_coverage = total_analyzed / total_emails if total_emails else 0
-    print(f"\n  TOTAL: {total_emails} emails → Need {total_required} for {target_coverage:.0%} coverage")
+    print(f"\n  TOTAL: {total_emails} emails -> Need {total_required} for {target_coverage:.0%} coverage")
     print(f"  CURRENT: {total_analyzed} analyzed ({overall_coverage:.0%} overall)")
 
     if total_analyzed < total_required:
         remaining = total_required - total_analyzed
-        print(f"\n  📊 Still need: {remaining} more emails")
+        print(f"\n  [STATS] Still need: {remaining} more emails")
     else:
-        print(f"\n  ✅ Coverage target met!")
+        print(f"\n  [OK] Coverage target met!")
 
-    print(f"{'═' * 60}\n")
+    print(f"{'=' * 60}\n")
 
 
 if __name__ == '__main__':
@@ -604,14 +610,14 @@ Examples:
             analyzed = get_analyzed_ids()
             incomplete = check_incomplete_clusters(args.cluster, analyzed)
             if incomplete:
-                print(f"\n{'═' * 60}")
-                print("⚠️  WARNING: Incomplete clusters detected")
-                print(f"{'═' * 60}")
+                print(f"\n{'=' * 60}")
+                print("[WARNING]  WARNING: Incomplete clusters detected")
+                print(f"{'=' * 60}")
                 for cid, remaining, coverage in incomplete:
                     print(f"   Cluster {cid}: {remaining} emails unanalyzed ({coverage:.0%} coverage)")
                 print(f"\n   Consider completing these first for better persona quality.")
                 print(f"   Or proceed with: python prepare_batch.py --cluster {args.cluster} --force")
-                print(f"{'═' * 60}\n")
+                print(f"{'=' * 60}\n")
                 exit(0)
         print(prepare_cluster_batch(args.cluster))
     else:
@@ -622,10 +628,10 @@ Examples:
         else:
             clusters_data = load_cluster_data()
             if clusters_data:
-                print("✅ All clusters have been analyzed!")
+                print("[OK] All clusters have been analyzed!")
                 print("\nRun: python ingest.py --status")
             else:
-                print("❌ No clusters found.")
+                print("[ERROR] No clusters found.")
                 print("\nRun the preprocessing pipeline first:")
                 print("  1. python filter_emails.py")
                 print("  2. python enrich_emails.py")

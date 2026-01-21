@@ -549,10 +549,10 @@ if __name__ == "__main__":
         for name, info in results.items():
             if info["installed"]:
                 status = "Enabled" if info["enabled"] else "Disabled"
-                icon = "✅" if info["enabled"] else "⚠️"
+                icon = "[OK]" if info["enabled"] else "[WARNING]"
                 print(f"{icon} {name}: {info['display_name']} ({status})")
             else:
-                print(f"❌ {name}: NOT INSTALLED")
+                print(f"[ERROR] {name}: NOT INSTALLED")
                 all_ok = False
 
         sys.exit(0 if all_ok else 1)
@@ -561,12 +561,12 @@ if __name__ == "__main__":
         status = get_mcp_status(args.check_mcp)
         if status:
             enabled_str = "Enabled" if status["enabled"] else "Disabled"
-            print(f"✅ {args.check_mcp} is configured in Chatwise")
+            print(f"[OK] {args.check_mcp} is configured in Chatwise")
             print(f"   Name: {status['display_name']}")
             print(f"   Status: {enabled_str}")
             sys.exit(0 if status["enabled"] else 1)
         else:
-            print(f"❌ {args.check_mcp} is NOT configured in Chatwise")
+            print(f"[ERROR] {args.check_mcp} is NOT configured in Chatwise")
             sys.exit(1)
 
     if args.check or args.source:

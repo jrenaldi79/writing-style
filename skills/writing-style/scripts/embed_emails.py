@@ -14,6 +14,12 @@ Requirements:
     pip install sentence-transformers numpy
 """
 
+
+# Windows compatibility: ensure local imports work
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
 import json
 import argparse
 import base64
@@ -48,7 +54,7 @@ def check_dependencies():
         missing.append('numpy')
     
     if missing:
-        print(f"❌ Missing dependencies: {', '.join(missing)}")
+        print(f"[ERROR] Missing dependencies: {', '.join(missing)}")
         print(f"\nInstall with:")
         print(f"  pip install {' '.join(missing)}")
         sys.exit(1)
@@ -164,19 +170,19 @@ def generate_embeddings(model_name: str = DEFAULT_MODEL) -> Dict:
     import numpy as np
     
     if not ENRICHED_DIR.exists():
-        print(f"❌ Enriched samples directory not found: {ENRICHED_DIR}")
+        print(f"[ERROR] Enriched samples directory not found: {ENRICHED_DIR}")
         print("   Run enrich_emails.py first.")
         return {}
     
     enriched_files = sorted(ENRICHED_DIR.glob('email_*.json'))
-    print(f"📧 Found {len(enriched_files)} enriched emails")
+    print(f"[EMAIL] Found {len(enriched_files)} enriched emails")
     
     if not enriched_files:
-        print("❌ No enriched emails found.")
+        print("[ERROR] No enriched emails found.")
         return {}
     
     # Load model
-    print(f"🤖 Loading model: {model_name}")
+    print(f"[AUTO] Loading model: {model_name}")
     model = SentenceTransformer(model_name)
     print(f"   Embedding dimension: {model.get_sentence_embedding_dimension()}")
     
@@ -189,20 +195,20 @@ def generate_embeddings(model_name: str = DEFAULT_MODEL) -> Dict:
         'emails': []
     }
     
-    print(f"\n📝 Preparing texts...")
+    print(f"\n[EDIT] Preparing texts...")
     for filepath in enriched_files:
         try:
             with open(filepath) as f:
                 enriched_data = json.load(f)
         except json.JSONDecodeError:
-            print(f"  ✗ {filepath.stem} → invalid JSON")
+            print(f"  [ERROR] {filepath.stem} -> invalid JSON")
             continue
         
         email_id = enriched_data.get('id', filepath.stem)
         text = prepare_text_for_embedding(enriched_data)
         
         if len(text.strip()) < 10:
-            print(f"  ⚠ {email_id} → very short ({len(text.strip())} chars), skipping")
+            print(f"  [WARNING] {email_id} -> very short ({len(text.strip())} chars), skipping")
             continue
         
         texts.append(text)
@@ -220,7 +226,7 @@ def generate_embeddings(model_name: str = DEFAULT_MODEL) -> Dict:
     print(f"   Prepared {len(texts)} texts for embedding")
     
     # Generate embeddings
-    print(f"\n⚡ Generating embeddings...")
+    print(f"\n[FAST] Generating embeddings...")
     embeddings = model.encode(
         texts,
         show_progress_bar=True,
@@ -232,13 +238,13 @@ def generate_embeddings(model_name: str = DEFAULT_MODEL) -> Dict:
     
     # Save embeddings
     np.save(EMBEDDINGS_FILE, embeddings)
-    print(f"💾 Saved embeddings to: {EMBEDDINGS_FILE}")
+    print(f"[SAVE] Saved embeddings to: {EMBEDDINGS_FILE}")
     
     # Save index
     index['count'] = len(texts)
     with open(INDEX_FILE, 'w') as f:
         json.dump(index, f, indent=2)
-    print(f"💾 Saved index to: {INDEX_FILE}")
+    print(f"[SAVE] Saved index to: {INDEX_FILE}")
     
     # Generate report
     report = {
@@ -255,18 +261,18 @@ def generate_embeddings(model_name: str = DEFAULT_MODEL) -> Dict:
         json.dump(report, f, indent=2)
     
     # Print summary
-    print(f"\n{'═' * 50}")
+    print(f"\n{'=' * 50}")
     print("EMBEDDING COMPLETE")
-    print(f"{'═' * 50}")
+    print(f"{'=' * 50}")
     print(f"Model: {model_name}")
     print(f"Emails embedded: {len(texts)}")
     print(f"Embedding dimension: {embeddings.shape[1]}")
     print(f"Avg text length: {report['avg_text_length']:.0f} chars")
-    print(f"{'═' * 50}")
-    print(f"\n📁 Files created:")
-    print(f"   • {EMBEDDINGS_FILE}")
-    print(f"   • {INDEX_FILE}")
-    print(f"\n💡 Next step: Run cluster_emails.py")
+    print(f"{'=' * 50}")
+    print(f"\n[FILE] Files created:")
+    print(f"   - {EMBEDDINGS_FILE}")
+    print(f"   - {INDEX_FILE}")
+    print(f"\n[TIP] Next step: Run cluster_emails.py")
     
     return report
 
@@ -275,16 +281,16 @@ def show_status():
     """Show current embedding status."""
     enriched_count = len(list(ENRICHED_DIR.glob('email_*.json'))) if ENRICHED_DIR.exists() else 0
     
-    print(f"\n{'═' * 50}")
+    print(f"\n{'=' * 50}")
     print("EMBEDDING STATUS")
-    print(f"{'═' * 50}")
+    print(f"{'=' * 50}")
     print(f"Enriched emails available: {enriched_count}")
     
     if EMBEDDINGS_FILE.exists() and INDEX_FILE.exists():
         with open(INDEX_FILE) as f:
             index = json.load(f)
         
-        print(f"\n✅ Embeddings exist")
+        print(f"\n[OK] Embeddings exist")
         print(f"   Model: {index.get('model', 'unknown')}")
         print(f"   Dimension: {index.get('dimension', 'unknown')}")
         print(f"   Email count: {index.get('count', 'unknown')}")
@@ -292,13 +298,13 @@ def show_status():
         
         # Check if embeddings are stale
         if enriched_count > index.get('count', 0):
-            print(f"\n⚠️  {enriched_count - index.get('count', 0)} new emails not embedded")
+            print(f"\n[WARNING]  {enriched_count - index.get('count', 0)} new emails not embedded")
             print("   Re-run embed_emails.py to update")
     else:
-        print(f"\n❌ No embeddings found")
+        print(f"\n[ERROR] No embeddings found")
         print("   Run: python embed_emails.py")
     
-    print(f"{'═' * 50}\n")
+    print(f"{'=' * 50}\n")
 
 
 if __name__ == '__main__':

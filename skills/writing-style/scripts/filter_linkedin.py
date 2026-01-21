@@ -17,6 +17,12 @@ Usage:
     python filter_linkedin.py --dry-run
 """
 
+
+# Windows compatibility: ensure local imports work
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
 import json
 import argparse
 from pathlib import Path
@@ -70,7 +76,7 @@ def main():
         FILTERED_DIR.mkdir(parents=True, exist_ok=True)
     
     files = list(RAW_DIR.glob('linkedin_*.json'))
-    print(f"\n🔍 Checking {len(files)} LinkedIn posts...")
+    print(f"\n[SEARCH] Checking {len(files)} LinkedIn posts...")
     print(f"   Threshold: >{MIN_CHARS} chars\n")
     
     passed = 0
@@ -87,16 +93,16 @@ def main():
             post_id = data.get('id', data.get('url', file_path.stem)[-50:])
 
             if result:
-                print(f"✅ KEEP  {post_id} ({len(data['text'])} chars, {likes} likes)")
+                print(f"[OK] KEEP  {post_id} ({len(data['text'])} chars, {likes} likes)")
                 passed += 1
                 if not args.dry_run:
                     shutil.copy2(file_path, FILTERED_DIR / file_path.name)
             else:
-                print(f"❌ DROP  {post_id}: {reason}")
+                print(f"[ERROR] DROP  {post_id}: {reason}")
                 rejected += 1
                 
         except Exception as e:
-            print(f"⚠️ Error processing {file_path.name}: {e}")
+            print(f"[WARNING] Error processing {file_path.name}: {e}")
             
     print(f"\n{'='*40}")
     print(f"Retained: {passed}")

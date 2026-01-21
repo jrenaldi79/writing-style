@@ -204,7 +204,7 @@ def analyze_rhythm(emails: List[Dict]) -> Dict:
 # =============================================================================
 
 # Patterns for bullet/list detection
-BULLET_PATTERN = re.compile(r'^[\s]*[-*•]\s+', re.MULTILINE)
+BULLET_PATTERN = re.compile(r'^[\s]*[-*-]\s+', re.MULTILINE)
 NUMBERED_PATTERN = re.compile(r'^[\s]*\d+[.)]\s+', re.MULTILINE)
 
 

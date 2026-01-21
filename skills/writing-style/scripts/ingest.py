@@ -16,6 +16,12 @@ Usage:
     python ingest.py batch_002.json --dry-run
 """
 
+
+# Windows compatibility: ensure local imports work
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
 import json
 import sys
 import argparse
@@ -182,9 +188,9 @@ def validate_batch_coverage(batch_data: dict, force: bool = False) -> tuple:
         deficit = required - projected_analyzed
 
         warning = f"""
-{'═' * 60}
-⚠️  COVERAGE VALIDATION FAILED
-{'═' * 60}
+{'=' * 60}
+[WARNING]  COVERAGE VALIDATION FAILED
+{'=' * 60}
 
 Cluster {cluster_id}: {total_in_cluster} emails
   Required for {MIN_COVERAGE_THRESHOLD:.0%} coverage: {required} emails
@@ -192,9 +198,9 @@ Cluster {cluster_id}: {total_in_cluster} emails
   In this batch: {new_from_batch}
   Projected total: {projected_analyzed} ({projected_coverage:.0%})
 
-  ❌ Still need {deficit} more emails to reach threshold
+  [ERROR] Still need {deficit} more emails to reach threshold
 
-{'─' * 60}
+{'-' * 60}
 OPTIONS:
 
 1. RECOMMENDED: Include more emails in this batch
@@ -204,7 +210,7 @@ OPTIONS:
 2. FORCE: Proceed anyway (not recommended - degrades persona quality)
    Run: python ingest.py {batch_data.get('batch_id', 'batch_XXX')}.json --force
 
-{'═' * 60}
+{'=' * 60}
 """
 
         if force:
@@ -240,29 +246,29 @@ def ingest_batch(batch_file, dry_run=False, force=False):
     new_personas = batch.get("new_personas", [])
     
     if not samples:
-        print("❌ No 'samples' array found in batch file")
-        print("\n📋 Expected format:")
+        print("[ERROR] No 'samples' array found in batch file")
+        print("\n[LIST] Expected format:")
         print('  "samples": [')
         print('    {"id": "email_xxx", "source": "email", "persona": "Name", "confidence": 0.85, "analysis": {...}, "context": {...}}')
         print('  ]')
         
         # Check for common mistakes
         if "sample_ids" in batch:
-            print("\n⚠️  Found 'sample_ids' - did you mean 'samples'?")
+            print("\n[WARNING]  Found 'sample_ids' - did you mean 'samples'?")
             print("    Each sample needs full analysis object, not just IDs.")
         if "persona" in batch and "new_personas" not in batch:
-            print("\n⚠️  Found 'persona' (singular) - did you mean 'new_personas' (array)?")
+            print("\n[WARNING]  Found 'persona' (singular) - did you mean 'new_personas' (array)?")
         if batch.get("samples") == []:
-            print("\n⚠️  'samples' array exists but is empty.")
+            print("\n[WARNING]  'samples' array exists but is empty.")
         
-        print("\n📖 Run: python prepare_batch.py")
+        print("\n[READ] Run: python prepare_batch.py")
         print("    The output includes the required JSON schema.")
         return False
     
-    print(f"📦 Processing batch: {len(samples)} samples, {len(new_personas)} new personas")
+    print(f"[PACKAGE] Processing batch: {len(samples)} samples, {len(new_personas)} new personas")
     
     if dry_run:
-        print("\n🔍 DRY RUN - no changes will be made\n")
+        print("\n[SEARCH] DRY RUN - no changes will be made\n")
     
     # Load existing data
     personas = load_json(PERSONA_FILE) if PERSONA_FILE.exists() else {"personas": {}, "created": datetime.now().isoformat()}
@@ -271,7 +277,7 @@ def ingest_batch(batch_file, dry_run=False, force=False):
     # Detect batch schema version
     batch_version = detect_schema_version(batch)
     if batch_version == "1.0":
-        print(f"  📦 Detected v1.0 schema - will migrate to v2.0")
+        print(f"  [PACKAGE] Detected v1.0 schema - will migrate to v2.0")
 
     # Process personas (new or existing)
     for persona in new_personas:
@@ -368,8 +374,8 @@ def ingest_batch(batch_file, dry_run=False, force=False):
         
         saved_count += 1
         conf = sample.get("confidence", 0)
-        conf_indicator = "✓" if conf >= 0.7 else "?" if conf >= 0.4 else "⚠"
-        print(f"  {conf_indicator} {sample_id[:20]}... → {persona_name} ({conf:.0%})")
+        conf_indicator = "[OK]" if conf >= 0.7 else "?" if conf >= 0.4 else "[WARNING]"
+        print(f"  {conf_indicator} {sample_id[:20]}... -> {persona_name} ({conf:.0%})")
     
     # Update persona counts
     if not dry_run:
@@ -390,9 +396,9 @@ def ingest_batch(batch_file, dry_run=False, force=False):
         save_json(STATE_FILE, state)
     
     # Summary
-    print(f"\n{'═' * 50}")
+    print(f"\n{'=' * 50}")
     print("INGEST COMPLETE" if not dry_run else "DRY RUN COMPLETE")
-    print(f"{'═' * 50}")
+    print(f"{'=' * 50}")
     print(f"Samples processed: {saved_count}")
     print(f"Personas: {', '.join(f'{k} ({v})' for k, v in persona_counts.items())}")
 
@@ -400,7 +406,7 @@ def ingest_batch(batch_file, dry_run=False, force=False):
         print(f"Total samples: {state['total_samples']}")
         print(f"Batches completed: {state['batches_completed']}")
 
-    print(f"{'═' * 50}")
+    print(f"{'=' * 50}")
 
     # Check remaining clusters and provide guidance
     if not dry_run:
@@ -428,8 +434,8 @@ def ingest_batch(batch_file, dry_run=False, force=False):
                     remaining_clusters += 1
 
         if remaining_clusters > 0:
-            print(f"\n📊 PROGRESS: {total_clusters - remaining_clusters}/{total_clusters} clusters analyzed")
-            print(f"\n💡 Next step:")
+            print(f"\n[STATS] PROGRESS: {total_clusters - remaining_clusters}/{total_clusters} clusters analyzed")
+            print(f"\n[TIP] Next step:")
             print(f"   Run: python prepare_batch.py")
             print(f"   Remaining clusters: {remaining_clusters}")
         else:
@@ -437,13 +443,13 @@ def ingest_batch(batch_file, dry_run=False, force=False):
             validation_dir = get_path("validation_set")
             validation_count = len(list(validation_dir.glob("*.json"))) if validation_dir.exists() else 0
 
-            print(f"\n{'═' * 60}")
-            print("✅ ALL CLUSTERS ANALYZED!")
-            print(f"{'═' * 60}")
+            print(f"\n{'=' * 60}")
+            print("[OK] ALL CLUSTERS ANALYZED!")
+            print(f"{'=' * 60}")
             print(f"\nEmail personas are ready.")
 
             if validation_count > 0:
-                print(f"\n📊 VALIDATION DATA AVAILABLE: {validation_count} held-out emails")
+                print(f"\n[STATS] VALIDATION DATA AVAILABLE: {validation_count} held-out emails")
                 print(f"\nRecommended next steps:")
                 print(f"   1. VALIDATE personas first (blind test):")
                 print(f"      python prepare_validation.py")
@@ -458,16 +464,16 @@ def ingest_batch(batch_file, dry_run=False, force=False):
                 print(f"      python generate_skill.py --name <your-name>")
                 print(f"   2. Or add LinkedIn voice first (optional):")
                 print(f"      python fetch_linkedin_mcp.py --profile \"URL\"")
-            print(f"{'═' * 60}")
+            print(f"{'=' * 60}")
 
             # Session boundary - explicit STOP
             print(f"\n{'█' * 60}")
             print("█  STOP - EMAIL ANALYSIS COMPLETE                          █")
             print("█                                                          █")
             print("█  START A NEW CHAT before proceeding to:                  █")
-            print("█    • Validation (Session 2b: Judge)                      █")
-            print("█    • LinkedIn (Session 3)                                █")
-            print("█    • Generation (Session 4)                              █")
+            print("█    - Validation (Session 2b: Judge)                      █")
+            print("█    - LinkedIn (Session 3)                                █")
+            print("█    - Generation (Session 4)                              █")
             print("█                                                          █")
             print("█  Reason: Clean context improves output quality.          █")
             print(f"{'█' * 60}\n")
@@ -487,9 +493,9 @@ def show_status():
     # Count actual sample files
     sample_count = len(list(SAMPLES_DIR.glob("*.json"))) if SAMPLES_DIR.exists() else 0
     
-    print(f"\n{'═' * 50}")
+    print(f"\n{'=' * 50}")
     print("INGEST STATUS")
-    print(f"{'═' * 50}")
+    print(f"{'=' * 50}")
     print(f"Total samples: {sample_count}")
     print(f"Batches completed: {state.get('batches_completed', 0)}")
     print(f"Current phase: {state.get('current_phase', 'unknown')}")
@@ -497,9 +503,9 @@ def show_status():
     if personas.get("personas"):
         print(f"\nPersonas:")
         for name, data in personas["personas"].items():
-            print(f"  • {name}: {data.get('sample_count', 0)} samples")
+            print(f"  - {name}: {data.get('sample_count', 0)} samples")
     
-    print(f"{'═' * 50}\n")
+    print(f"{'=' * 50}\n")
 
 
 if __name__ == "__main__":

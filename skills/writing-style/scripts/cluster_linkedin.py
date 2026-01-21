@@ -9,6 +9,12 @@ Usage:
     python cluster_linkedin.py
 """
 
+
+# Windows compatibility: ensure local imports work
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
 import json
 import re
 import math
@@ -125,14 +131,14 @@ def analyze_structure(posts: list) -> dict:
         "opener_pattern": "Hook-based (Questions or strong statements)" if has_hook else "Context-first",
         "closer_pattern": "Engagement question or Call to Action" if has_cta else "Professional sign-off",
         "sentence_variance": "High (Mix of short punchy lines and detailed paragraphs)",
-        "paragraph_structure": "Concept → Evidence → Insight → Engagement"
+        "paragraph_structure": "Concept -> Evidence -> Insight -> Engagement"
     }
 
 def analyze_formatting(posts: list) -> dict:
     """Analyze formatting rules."""
-    has_bullets = any('•' in p['text'] or '-' in p['text'] for p in posts)
+    has_bullets = any('\u2022' in p['text'] or '-' in p['text'] for p in posts)
     has_hashtags = any('#' in p['text'] for p in posts)
-    emoji_freq = "Frequent" if sum(p['text'].count('🍌') + p['text'].count('🚀') for p in posts) > 5 else "Sparingly"
+    emoji_freq = "Frequent" if sum(p['text'].count('[BANANA]') + p['text'].count('[RUN]') for p in posts) > 5 else "Sparingly"
     
     return {
         "bullet_points": "Used for lists and emphasis" if has_bullets else "Rarely used",
@@ -324,8 +330,8 @@ def analyze_platform_rules(posts: list) -> dict:
         line_break_ratio = double_breaks / (len(text) / 100) if text else 0
         line_break_ratios.append(line_break_ratio)
 
-        # Bullets
-        if re.search(r'^[\s]*[•\-\*]', text, re.MULTILINE):
+        # Bullets (including Unicode bullet •)
+        if re.search(r'^[\s]*[\u2022\-\*]', text, re.MULTILINE):
             has_bullets = True
 
         # Hashtags
@@ -679,26 +685,26 @@ def main():
     with open(OUTPUT_FILE, 'w') as f:
         json.dump(v2_persona, f, indent=2)
 
-    print(f"\n{'═' * 60}")
-    print("✅ LINKEDIN PERSONA GENERATED")
-    print(f"{'═' * 60}")
+    print(f"\n{'=' * 60}")
+    print("[OK] LINKEDIN PERSONA GENERATED")
+    print(f"{'=' * 60}")
     print(f"   Schema version: {v2_persona['schema_version']}")
     print(f"   Confidence: {v2_persona['confidence']}")
     print(f"   Sample size: {v2_persona['sample_size']}")
     print(f"\nTone vectors:")
     print(json.dumps(v2_persona['voice']['tone_vectors'], indent=2))
-    print(f"\n💾 Saved to: {OUTPUT_FILE}")
+    print(f"\n[SAVE] Saved to: {OUTPUT_FILE}")
 
-    print(f"\n{'═' * 60}")
-    print("🛑 SESSION 3 COMPLETE - LINKEDIN DONE")
-    print(f"{'═' * 60}")
+    print(f"\n{'=' * 60}")
+    print("[STOP] SESSION 3 COMPLETE - LINKEDIN DONE")
+    print(f"{'=' * 60}")
     print("\nLinkedIn voice profile is ready.")
-    print("\n👉 NEXT STEP: Generate your writing clone skill")
+    print("\n-> NEXT STEP: Generate your writing clone skill")
     print("   Run: python generate_skill.py --name <your-name>")
     print()
     print("This will combine your Email personas + LinkedIn voice")
     print("into an installable skill package.")
-    print(f"{'═' * 60}\n")
+    print(f"{'=' * 60}\n")
 
 
 if __name__ == '__main__':

@@ -20,6 +20,12 @@ API Token:
     No manual configuration needed if using Chatwise with BrightData MCP installed.
 """
 
+
+# Windows compatibility: ensure local imports work
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
 import subprocess
 import json
 import sys
@@ -32,7 +38,7 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Configuration - BrightData MCP Server (NPX-based, like Gmail)
-from config import get_data_dir, get_path
+from config import get_data_dir, get_path, get_npx_command
 from api_keys import get_brightdata_token, is_mcp_configured_in_chatwise, KNOWN_MCPS
 
 DATA_DIR = get_data_dir()
@@ -47,7 +53,7 @@ CHATWISE_DESKTOP_COMMANDER_URL = "https://chatwise.app/mcp-add?json=ewogICJtY3BT
 def get_mcp_command(token):
     """Build MCP command with token in environment."""
     return {
-        "command": ["npx", "@brightdata/mcp"],
+        "command": [get_npx_command(), "@brightdata/mcp"],
         "env": {
             "API_TOKEN": token,
             "GROUPS": "advanced_scraping,social"
@@ -118,7 +124,7 @@ class MCPClient:
                 continue
 
     def initialize(self):
-        print("🔌 Connecting to BrightData MCP server...")
+        print("[CONNECT] Connecting to BrightData MCP server...")
         req_id = self.send_request("initialize", {
             "protocolVersion": "2024-11-05",
             "capabilities": {},
@@ -126,7 +132,7 @@ class MCPClient:
         })
         self.read_response(req_id)
         self.send_notification("notifications/initialized")
-        print("✅ Connected.")
+        print("[OK] Connected.")
 
     def call_tool(self, name, arguments):
         req_id = self.send_request("tools/call", {
@@ -161,10 +167,10 @@ def check_brightdata_auth(token=None, verbose=True):
     if is_mcp_configured_in_chatwise(KNOWN_MCPS["brightdata"]):
         details["chatwise_configured"] = True
         if verbose:
-            print("✅ BrightData MCP is configured in Chatwise")
+            print("[OK] BrightData MCP is configured in Chatwise")
     else:
         if verbose:
-            print("⚠️  BrightData MCP is not configured in Chatwise (will use npx directly)")
+            print("[WARNING]  BrightData MCP is not configured in Chatwise (will use npx directly)")
 
     # Check if npx is available
     if not shutil.which("npx"):
@@ -180,7 +186,7 @@ def check_brightdata_auth(token=None, verbose=True):
     details["token_set"] = True
 
     if verbose:
-        print("🔍 Checking BrightData MCP server...")
+        print("[SEARCH] Checking BrightData MCP server...")
 
     try:
         mcp_config = get_mcp_command(token)
@@ -189,7 +195,7 @@ def check_brightdata_auth(token=None, verbose=True):
         details["mcp_connects"] = True
 
         if verbose:
-            print("🔐 Verifying BrightData API token...")
+            print("[AUTH] Verifying BrightData API token...")
 
         # Try a simple search to verify the API works
         result_json = client.call_tool("search_engine", {
@@ -227,42 +233,42 @@ def check_brightdata_auth(token=None, verbose=True):
 
 def print_linkedin_install_instructions(details=None):
     """Print instructions for installing BrightData MCP."""
-    print(f"\n{'═' * 70}")
+    print(f"\n{'=' * 70}")
     print("LINKEDIN PIPELINE PREREQUISITES")
-    print(f"{'═' * 70}")
+    print(f"{'=' * 70}")
 
     print("\nThe LinkedIn pipeline requires BrightData MCP Server for scraping.")
 
     # Check what's missing
     if details:
         if not details.get("token_set"):
-            print("\n❌ MISSING: BrightData API token not found")
+            print("\n[ERROR] MISSING: BrightData API token not found")
         if not details.get("mcp_connects"):
-            print("❌ MISSING: BrightData MCP server not responding")
+            print("[ERROR] MISSING: BrightData MCP server not responding")
 
-    print(f"\n{'─' * 70}")
+    print(f"\n{'-' * 70}")
     print("STEP 1: Get a BrightData API Token")
-    print(f"{'─' * 70}")
+    print(f"{'-' * 70}")
     print("   1. Sign up at: https://brightdata.com/cp/start")
     print("   2. Navigate to API settings to get your API token")
     print("   3. Copy the token for the next step")
 
-    print(f"\n{'─' * 70}")
+    print(f"\n{'-' * 70}")
     print("STEP 2: Install BrightData MCP Server in Chatwise")
-    print(f"{'─' * 70}")
-    print("\n📦 ONE-CLICK INSTALL (Recommended):")
+    print(f"{'-' * 70}")
+    print("\n[PACKAGE] ONE-CLICK INSTALL (Recommended):")
     print(f"   {CHATWISE_BRIGHTDATA_URL}")
-    print("\n   ⚠️  After clicking, replace YOUR_BRIGHTDATA_TOKEN with your actual token!")
+    print("\n   [WARNING]  After clicking, replace YOUR_BRIGHTDATA_TOKEN with your actual token!")
     print("\n   The script will automatically detect your token from Chatwise.")
 
-    print(f"\n{'─' * 70}")
+    print(f"\n{'-' * 70}")
     print("ALTERNATIVE: Environment Variable")
-    print(f"{'─' * 70}")
+    print(f"{'-' * 70}")
     print("\nIf not using Chatwise, set the environment variable:")
     print('   export BRIGHTDATA_API_TOKEN="your-brightdata-api-token"')
     print("\nAdd to ~/.bashrc or ~/.zshrc for persistence.")
 
-    print(f"\n{'═' * 70}\n")
+    print(f"\n{'=' * 70}\n")
 
 
 def load_state():
@@ -290,7 +296,7 @@ def save_state(state):
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=2)
     
-    print(f"\n💾 State saved to: {STATE_FILE}")
+    print(f"\n[SAVE] State saved to: {STATE_FILE}")
 
 
 def normalize_profile_url(profile_input):
@@ -580,7 +586,7 @@ def verify_profile(client, profile_url):
         profile_json = client.call_tool("scrape_as_markdown", {"url": profile_url})
         content = profile_json  # Already a string from MCP
     except Exception as e:
-        print(f"\n❌ Error scraping profile: {e}")
+        print(f"\n[ERROR] Error scraping profile: {e}")
         sys.exit(1)
     
     # Extract structured metadata
@@ -605,7 +611,7 @@ def verify_profile(client, profile_url):
     profile_data['validated'] = True
     profile_data['validated_at'] = datetime.now().isoformat()
 
-    print("\n✅ Profile validated. Searching for posts...\n")
+    print("\n[OK] Profile validated. Searching for posts...\n")
     
     return profile_data
 
@@ -652,7 +658,7 @@ def search_for_posts(client, username, limit=20, profile_data=None,
             print(f"Dynamic keywords: {', '.join(keywords[:3])}")
 
     for i, query in enumerate(search_patterns, 1):
-        print(f"\n🔍 Search {i}/{len(search_patterns)}: {query}")
+        print(f"\n[SEARCH] Search {i}/{len(search_patterns)}: {query}")
 
         try:
             result_json = client.call_tool("search_engine", {
@@ -673,21 +679,21 @@ def search_for_posts(client, username, limit=20, profile_data=None,
                     all_urls.append(url)
 
             found = len(all_urls)
-            print(f"   → Found {found} posts so far")
+            print(f"   -> Found {found} posts so far")
 
             # Early termination when we have enough unique URLs
             if len(set(all_urls)) >= limit * 1.5:
-                print("   → Sufficient URLs found, stopping search")
+                print("   -> Sufficient URLs found, stopping search")
                 break
 
         except Exception as e:
-            print(f"   ⚠️  Search failed: {e}")
+            print(f"   [WARNING]  Search failed: {e}")
             continue
 
     # Deduplicate and limit
     unique_urls = list(dict.fromkeys(all_urls))[:limit]
 
-    print(f"\n✅ Total unique post URLs: {len(unique_urls)}")
+    print(f"\n[OK] Total unique post URLs: {len(unique_urls)}")
     return unique_urls
 
 
@@ -792,13 +798,13 @@ def scrape_posts_batch(client, urls, validated_profile, max_retries=2, retry_del
     # Get token from Chatwise or environment
     token = get_brightdata_token(require=False)
     if not token:
-        print("❌ BrightData API token not found")
+        print("[ERROR] BrightData API token not found")
         print("   Configure in Chatwise or set BRIGHTDATA_API_TOKEN environment variable")
         return []
 
     # Scrape posts in parallel
     batch_results = {}
-    print(f"📦 Starting parallel scrape of {len(urls)} posts...")
+    print(f"[PACKAGE] Starting parallel scrape of {len(urls)} posts...")
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all scrape jobs
@@ -817,11 +823,11 @@ def scrape_posts_batch(client, urls, validated_profile, max_retries=2, retry_del
                 batch_results[url] = post_data
                 text_len = len(post_data.get("post_text", ""))
                 likes = post_data.get("num_likes", 0)
-                print(f"   ✅ [{completed}/{len(urls)}] {text_len} chars, {likes} likes - {url[:50]}...")
+                print(f"   [OK] [{completed}/{len(urls)}] {text_len} chars, {likes} likes - {url[:50]}...")
             else:
-                print(f"   ❌ [{completed}/{len(urls)}] Failed: {error} - {url[:50]}...")
+                print(f"   [ERROR] [{completed}/{len(urls)}] Failed: {error} - {url[:50]}...")
 
-    print(f"\n✅ Parallel scrape complete: {len(batch_results)}/{len(urls)} successful")
+    print(f"\n[OK] Parallel scrape complete: {len(batch_results)}/{len(urls)} successful")
 
     # Process results
     for i, url in enumerate(urls, 1):
@@ -883,20 +889,20 @@ def scrape_posts_batch(client, urls, validated_profile, max_retries=2, retry_del
                 "reason": reason,
                 "user_id": post_data.get("user_id", "unknown")
             })
-            print(f"   ⚠️  Rejected: {reason}")
+            print(f"   [WARNING]  Rejected: {reason}")
     
     # Report validation results
     print(f"\n" + "=" * 60)
     print(f"VALIDATION SUMMARY")
     print(f"=" * 60)
-    print(f"✅ Validated: {len(all_posts)} posts (confirmed ownership)")
+    print(f"[OK] Validated: {len(all_posts)} posts (confirmed ownership)")
     
     if rejected_posts:
-        print(f"⚠️  Rejected:  {len(rejected_posts)} posts (failed validation)")
+        print(f"[WARNING]  Rejected:  {len(rejected_posts)} posts (failed validation)")
         for rejection in rejected_posts:
             print(f"   - {rejection['url'][:60]}... ({rejection['reason']})")
     else:
-        print(f"✅ No rejections: All posts passed validation")
+        print(f"[OK] No rejections: All posts passed validation")
     
     print(f"=" * 60 + "\n")
     
@@ -925,9 +931,9 @@ def process_and_save(posts, holdout=0.15):
             json.dump(post, f, indent=2)
         saved_count += 1
     
-    print(f"✓ Saved {saved_count} posts to {raw_dir}")
-    print(f"\n✅ LinkedIn fetch complete!")
-    print(f"\n📊 Next steps:")
+    print(f"[OK] Saved {saved_count} posts to {raw_dir}")
+    print(f"\n[OK] LinkedIn fetch complete!")
+    print(f"\n[STATS] Next steps:")
     print(f"   1. Run filter_linkedin.py to quality-check posts")
     print(f"   2. Run cluster_linkedin.py to create unified persona")
     print(f"   3. LinkedIn voice will be added to your writing assistant")
@@ -995,21 +1001,21 @@ Examples:
         token = args.token or get_brightdata_token(require=False)
         success, message, details = check_brightdata_auth(token=token, verbose=True)
         if success:
-            print(f"\n✅ {message}")
+            print(f"\n[OK] {message}")
             print("\nChecklist:")
-            print(f"   ✅ npx available")
-            print(f"   ✅ API token found")
-            print(f"   ✅ BrightData MCP connects")
-            print(f"   ✅ API token valid")
+            print(f"   [OK] npx available")
+            print(f"   [OK] API token found")
+            print(f"   [OK] BrightData MCP connects")
+            print(f"   [OK] API token valid")
             sys.exit(0)
         else:
-            print(f"\n❌ {message}")
+            print(f"\n[ERROR] {message}")
             print_linkedin_install_instructions(details)
             sys.exit(1)
 
     # Require --profile for fetching
     if not args.profile:
-        print("❌ Error: --profile is required (unless using --check)")
+        print("[ERROR] Error: --profile is required (unless using --check)")
         print("   Example: python fetch_linkedin_mcp.py --profile 'renaldi' --limit 20")
         sys.exit(1)
 
@@ -1020,17 +1026,17 @@ Examples:
     if not args.skip_check:
         success, message, details = check_brightdata_auth(token=token, verbose=True)
         if not success:
-            print(f"\n❌ {message}")
+            print(f"\n[ERROR] {message}")
             print_linkedin_install_instructions(details)
             sys.exit(1)
-        print(f"✅ {message}\n")
+        print(f"[OK] {message}\n")
     
     # Normalize profile URL
     profile_url = normalize_profile_url(args.profile)
     username = extract_username(profile_url)
     
     if not username:
-        print(f"❌ Error: Could not extract username from {profile_url}")
+        print(f"[ERROR] Error: Could not extract username from {profile_url}")
         sys.exit(1)
     
     print("\n" + "=" * 60)
@@ -1064,7 +1070,7 @@ Examples:
         )
         
         if not post_urls:
-            print("\n❌ No posts found. Try:")
+            print("\n[ERROR] No posts found. Try:")
             print("   - Checking if profile is public")
             print("   - Using full LinkedIn URL: https://linkedin.com/in/username")
             sys.exit(1)
@@ -1073,7 +1079,7 @@ Examples:
         posts = scrape_posts_batch(client, post_urls, profile_data)
         
         if not posts:
-            print("\n❌ No posts could be scraped successfully")
+            print("\n[ERROR] No posts could be scraped successfully")
             sys.exit(1)
         
         # Step 4: Save results
@@ -1106,9 +1112,9 @@ Examples:
         save_state(state)
         
     except KeyboardInterrupt:
-        print("\n\n⚠️  Interrupted by user")
+        print("\n\n[WARNING]  Interrupted by user")
     except Exception as e:
-        print(f"\n\n❌ Error: {e}")
+        print(f"\n\n[ERROR] Error: {e}")
         import traceback
         traceback.print_exc()
     finally:

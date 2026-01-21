@@ -11,10 +11,16 @@ Filters out:
 - Empty bodies
 
 Usage:
-    python filter_emails.py                    # Process raw_samples → filtered_samples
+    python filter_emails.py                    # Process raw_samples -> filtered_samples
     python filter_emails.py --dry-run          # Preview without saving
     python filter_emails.py --status           # Show filter statistics
 """
+
+
+# Windows compatibility: ensure local imports work
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
 
 import json
 import re
@@ -284,17 +290,17 @@ def process_emails(dry_run: bool = False) -> Dict:
     Returns filter report.
     """
     if not RAW_DIR.exists():
-        print(f"❌ Raw samples directory not found: {RAW_DIR}")
+        print(f"[ERROR] Raw samples directory not found: {RAW_DIR}")
         return {}
     
     if not dry_run:
         FILTERED_DIR.mkdir(parents=True, exist_ok=True)
     
     raw_files = list(RAW_DIR.glob('email_*.json'))
-    print(f"📧 Processing {len(raw_files)} raw emails...")
+    print(f"[EMAIL] Processing {len(raw_files)} raw emails...")
     
     if dry_run:
-        print("\n🔍 DRY RUN - no files will be written\n")
+        print("\n[SEARCH] DRY RUN - no files will be written\n")
     
     # Track results
     accepted = []
@@ -331,12 +337,12 @@ def process_emails(dry_run: bool = False) -> Dict:
                 with open(output_path, 'w') as f:
                     json.dump(output_data, f, indent=2)
             
-            status = '✓' if quality_info['quality_score'] >= 0.6 else '~'
+            status = '[OK]' if quality_info['quality_score'] >= 0.6 else '~'
             print(f"  {status} {email_id} (quality: {quality_info['quality_score']:.2f})")
         else:
             rejected.append((email_id, reason, quality_info))
             rejection_reasons[reason] += 1
-            print(f"  ✗ {email_id} → {reason}")
+            print(f"  [ERROR] {email_id} -> {reason}")
     
     # Generate report
     report = {
@@ -358,22 +364,22 @@ def process_emails(dry_run: bool = False) -> Dict:
             json.dump(report, f, indent=2)
     
     # Print summary
-    print(f"\n{'═' * 50}")
+    print(f"\n{'=' * 50}")
     print("FILTER COMPLETE" if not dry_run else "DRY RUN COMPLETE")
-    print(f"{'═' * 50}")
+    print(f"{'=' * 50}")
     print(f"Input:    {report['input_count']} emails")
     print(f"Accepted: {report['output_count']} ({report['output_count']/max(report['input_count'],1)*100:.1f}%)")
     print(f"Rejected: {report['rejected_count']} ({report['rejected_count']/max(report['input_count'],1)*100:.1f}%)")
     print(f"\nRejection breakdown:")
     for reason, count in sorted(rejection_reasons.items(), key=lambda x: -x[1]):
-        print(f"  • {reason}: {count}")
+        print(f"  - {reason}: {count}")
     print(f"\nAverage quality score: {report['avg_quality_score']:.2f}")
     print(f"Quality distribution: {report['quality_distribution']}")
-    print(f"{'═' * 50}")
+    print(f"{'=' * 50}")
     
     if not dry_run:
-        print(f"\n📁 Filtered emails saved to: {FILTERED_DIR}")
-        print(f"📊 Report saved to: {REPORT_FILE}")
+        print(f"\n[FILE] Filtered emails saved to: {FILTERED_DIR}")
+        print(f"[STATS] Report saved to: {REPORT_FILE}")
     
     return report
 
@@ -383,9 +389,9 @@ def show_status():
     raw_count = len(list(RAW_DIR.glob('email_*.json'))) if RAW_DIR.exists() else 0
     filtered_count = len(list(FILTERED_DIR.glob('email_*.json'))) if FILTERED_DIR.exists() else 0
     
-    print(f"\n{'═' * 50}")
+    print(f"\n{'=' * 50}")
     print("FILTER STATUS")
-    print(f"{'═' * 50}")
+    print(f"{'=' * 50}")
     print(f"Raw emails:      {raw_count}")
     print(f"Filtered emails: {filtered_count}")
     
@@ -396,11 +402,11 @@ def show_status():
         print(f"Avg quality: {report.get('avg_quality_score', 0):.2f}")
         print(f"\nRejection breakdown:")
         for reason, count in report.get('rejection_breakdown', {}).items():
-            print(f"  • {reason}: {count}")
+            print(f"  - {reason}: {count}")
     else:
         print("\nNo filter report found. Run filter first.")
     
-    print(f"{'═' * 50}\n")
+    print(f"{'=' * 50}\n")
 
 
 if __name__ == '__main__':

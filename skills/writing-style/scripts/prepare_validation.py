@@ -15,6 +15,12 @@ Usage:
     python prepare_validation.py --dry-run     # Preview without saving
 """
 
+
+# Windows compatibility: ensure local imports work
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
 import json
 import re
 import argparse

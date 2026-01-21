@@ -15,6 +15,12 @@ Features:
 - Supports dry-run mode
 """
 
+
+# Windows compatibility: ensure local imports work
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
 import json
 import sys
 import argparse
@@ -244,7 +250,7 @@ def main():
     if warnings:
         print("\nValidation warnings:")
         for w in warnings:
-            print(f"  ⚠️  {w}")
+            print(f"  [WARNING]  {w}")
 
     # Count completions
     counts = count_completed_fields(merged)
@@ -263,7 +269,7 @@ def main():
     else:
         with open(PERSONA_FILE, 'w') as f:
             json.dump(merged, f, indent=2)
-        print(f"\n✅ Saved merged persona to: {PERSONA_FILE}")
+        print(f"\n[OK] Saved merged persona to: {PERSONA_FILE}")
 
     return 0
 

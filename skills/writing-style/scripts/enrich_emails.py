@@ -10,10 +10,16 @@ Extracts:
 - Email structure metrics
 
 Usage:
-    python enrich_emails.py                    # Process filtered_samples → enriched_samples
+    python enrich_emails.py                    # Process filtered_samples -> enriched_samples
     python enrich_emails.py --dry-run          # Preview without saving
     python enrich_emails.py --status           # Show enrichment statistics
 """
+
+
+# Windows compatibility: ensure local imports work
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
 
 import json
 import re
@@ -242,8 +248,8 @@ def analyze_structure(body: str) -> Dict:
     if current_para:
         paragraphs.append('\n'.join(current_para))
     
-    # Detect bullet points
-    bullet_patterns = [r'^\s*[•\-\*]\s+', r'^\s*\d+[.)\-]\s+']
+    # Detect bullet points (including Unicode bullet •)
+    bullet_patterns = [r'^\s*[\u2022\-\*]\s+', r'^\s*\d+[.)\-]\s+']
     bullet_count = sum(
         1 for line in lines 
         if any(re.match(p, line) for p in bullet_patterns)
@@ -392,7 +398,7 @@ def process_emails(dry_run: bool = False) -> Dict:
     global USER_DOMAIN
     
     if not FILTERED_DIR.exists():
-        print(f"❌ Filtered samples directory not found: {FILTERED_DIR}")
+        print(f"[ERROR] Filtered samples directory not found: {FILTERED_DIR}")
         print("   Run filter_emails.py first.")
         return {}
     
@@ -400,17 +406,17 @@ def process_emails(dry_run: bool = False) -> Dict:
         ENRICHED_DIR.mkdir(parents=True, exist_ok=True)
     
     filtered_files = list(FILTERED_DIR.glob('email_*.json'))
-    print(f"📧 Enriching {len(filtered_files)} filtered emails...")
+    print(f"[EMAIL] Enriching {len(filtered_files)} filtered emails...")
     
     if dry_run:
-        print("\n🔍 DRY RUN - no files will be written\n")
+        print("\n[SEARCH] DRY RUN - no files will be written\n")
     
     # Auto-detect user domain from first email
     if not USER_DOMAIN and filtered_files:
         with open(filtered_files[0]) as f:
             sample = json.load(f)
         USER_DOMAIN = detect_user_domain(sample.get('original_data', sample))
-        print(f"📍 Detected user domain: {USER_DOMAIN}\n")
+        print(f"[LOC] Detected user domain: {USER_DOMAIN}\n")
     
     # Track statistics
     stats = {
@@ -428,7 +434,7 @@ def process_emails(dry_run: bool = False) -> Dict:
             with open(filepath) as f:
                 filtered_data = json.load(f)
         except json.JSONDecodeError:
-            print(f"  ✗ {filepath.stem} → invalid JSON")
+            print(f"  [ERROR] {filepath.stem} -> invalid JSON")
             continue
         
         enriched = enrich_email(filtered_data, USER_DOMAIN)
@@ -450,8 +456,8 @@ def process_emails(dry_run: bool = False) -> Dict:
                 json.dump(enriched, f, indent=2)
         
         # Brief status
-        audience_icon = {'internal': '🏠', 'external': '🌍', 'mixed': '🔀'}.get(e['audience'], '❓')
-        print(f"  ✓ {enriched['id']} → {e['recipient_type']} {audience_icon} ({e['thread_position']})")
+        audience_icon = {'internal': '[HOME]', 'external': '[WORLD]', 'mixed': '[SPLIT]'}.get(e['audience'], '[?]')
+        print(f"  [OK] {enriched['id']} -> {e['recipient_type']} {audience_icon} ({e['thread_position']})")
         processed += 1
     
     # Generate report
@@ -475,24 +481,24 @@ def process_emails(dry_run: bool = False) -> Dict:
             json.dump(report, f, indent=2)
     
     # Print summary
-    print(f"\n{'═' * 50}")
+    print(f"\n{'=' * 50}")
     print("ENRICHMENT COMPLETE" if not dry_run else "DRY RUN COMPLETE")
-    print(f"{'═' * 50}")
+    print(f"{'=' * 50}")
     print(f"Processed: {processed} emails")
     print(f"\nRecipient Types:")
     for rtype, count in stats['recipient_types'].most_common():
-        print(f"  • {rtype}: {count}")
+        print(f"  - {rtype}: {count}")
     print(f"\nAudience:")
     for audience, count in stats['audiences'].most_common():
-        print(f"  • {audience}: {count}")
+        print(f"  - {audience}: {count}")
     print(f"\nThread Position:")
     for pos, count in stats['thread_positions'].most_common():
-        print(f"  • {pos}: {count}")
-    print(f"{'═' * 50}")
+        print(f"  - {pos}: {count}")
+    print(f"{'=' * 50}")
     
     if not dry_run:
-        print(f"\n📁 Enriched emails saved to: {ENRICHED_DIR}")
-        print(f"📊 Report saved to: {REPORT_FILE}")
+        print(f"\n[FILE] Enriched emails saved to: {ENRICHED_DIR}")
+        print(f"[STATS] Report saved to: {REPORT_FILE}")
     
     return report
 
@@ -502,9 +508,9 @@ def show_status():
     filtered_count = len(list(FILTERED_DIR.glob('email_*.json'))) if FILTERED_DIR.exists() else 0
     enriched_count = len(list(ENRICHED_DIR.glob('email_*.json'))) if ENRICHED_DIR.exists() else 0
     
-    print(f"\n{'═' * 50}")
+    print(f"\n{'=' * 50}")
     print("ENRICHMENT STATUS")
-    print(f"{'═' * 50}")
+    print(f"{'=' * 50}")
     print(f"Filtered emails:  {filtered_count}")
     print(f"Enriched emails:  {enriched_count}")
     
@@ -518,11 +524,11 @@ def show_status():
         if stats.get('audiences'):
             print(f"\nAudience breakdown:")
             for audience, count in stats['audiences'].items():
-                print(f"  • {audience}: {count}")
+                print(f"  - {audience}: {count}")
     else:
         print("\nNo enrichment report found. Run enrichment first.")
     
-    print(f"{'═' * 50}\n")
+    print(f"{'=' * 50}\n")
 
 
 if __name__ == '__main__':

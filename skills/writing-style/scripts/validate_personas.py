@@ -18,6 +18,12 @@ Usage:
     python validate_personas.py --status         # Show validation status
 """
 
+
+# Windows compatibility: ensure local imports work
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent))
+
 import json
 import os
 import re
@@ -389,7 +395,7 @@ def list_available_models():
     major_providers = ['anthropic', 'openai', 'google', 'meta-llama', 'mistralai']
 
     print(f"\nCurrent model: {_get_selected_model()}")
-    print(f"\n{'─' * 70}")
+    print(f"\n{'-' * 70}")
 
     shown_count = 0
     for provider in major_providers:
@@ -418,7 +424,7 @@ def list_available_models():
     if other_count > 0:
         print(f"\n  ... and {other_count} more models from other providers")
 
-    print(f"\n{'─' * 70}")
+    print(f"\n{'-' * 70}")
     print("\nTo select a model, run:")
     print(f"  python validate_personas.py --set-model 'model-id'")
     print(f"\nExample:")
@@ -1455,9 +1461,9 @@ def run_auto_validation() -> bool:
 
     # Check if model selection is required (when OpenRouter API is available)
     if _check_llm_available() and not check_model_configured():
-        print(f"\n{'═' * 60}")
-        print("⚠️  MODEL SELECTION REQUIRED")
-        print(f"{'═' * 60}")
+        print(f"\n{'=' * 60}")
+        print("[WARNING]  MODEL SELECTION REQUIRED")
+        print(f"{'=' * 60}")
         print("""
 OpenRouter API key found, but no model has been selected.
 
@@ -1474,7 +1480,7 @@ REQUIRED STEPS:
 
 Then re-run validation.
 """)
-        print(f"{'═' * 60}\n")
+        print(f"{'=' * 60}\n")
         return False
 
     print(f"Running blind validation...")
@@ -1595,12 +1601,12 @@ Then re-run validation.
                     print(f"     {line}")
                 print(f"     --- END PREVIEW ---")
 
-        print(f"\n{'─' * 60}")
+        print(f"\n{'-' * 60}")
         print("ACTION REQUIRED: Review mismatches above and either:")
         print("  1. Update persona_registry.json with fixes")
         print("  2. Run interactive validation: python validate_personas.py --interactive")
         print("  3. Re-run validation to verify improvements")
-        print(f"{'─' * 60}")
+        print(f"{'-' * 60}")
 
     print(f"\n{'=' * 60}")
     print(f"Reports saved to:")
