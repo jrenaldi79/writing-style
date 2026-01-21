@@ -71,24 +71,36 @@ def _get_model_config_file() -> Path:
 # OpenRouter API
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# Model pricing (per 1M tokens)
+# Model pricing (per 1M tokens) - Updated January 2026
 MODEL_PRICING = {
-    "anthropic/claude-sonnet-4-20250514": {"input": 3.0, "output": 15.0},
-    "anthropic/claude-3-5-haiku-20241022": {"input": 0.80, "output": 4.0},
-    "anthropic/claude-3-5-sonnet-20241022": {"input": 3.0, "output": 15.0},
-    "anthropic/claude-3-haiku-20240307": {"input": 0.25, "output": 1.25},
-    "openai/gpt-4o": {"input": 2.5, "output": 10.0},
-    "openai/gpt-4o-mini": {"input": 0.15, "output": 0.60},
-    "google/gemini-flash-1.5": {"input": 0.075, "output": 0.30},
-    "default": {"input": 5.0, "output": 15.0}
+    # Gemini models (1M context - ideal for large batches)
+    "google/gemini-3-flash-preview": {"input": 0.50, "output": 3.0},
+    "google/gemini-2.5-flash": {"input": 0.30, "output": 2.5},
+    "google/gemini-2.5-flash-lite": {"input": 0.10, "output": 0.40},
+    "google/gemini-2.0-flash-001": {"input": 0.10, "output": 0.40},
+    "google/gemini-2.0-flash-lite-001": {"input": 0.075, "output": 0.30},
+    "google/gemini-2.5-pro": {"input": 1.25, "output": 10.0},
+    # Claude models
+    "anthropic/claude-sonnet-4.5": {"input": 3.0, "output": 15.0},
+    "anthropic/claude-sonnet-4": {"input": 3.0, "output": 15.0},
+    "anthropic/claude-haiku-4.5": {"input": 1.0, "output": 5.0},
+    "anthropic/claude-3.5-haiku": {"input": 0.80, "output": 4.0},
+    "anthropic/claude-3-haiku": {"input": 0.25, "output": 1.25},
+    # Other options
+    "qwen/qwen-turbo": {"input": 0.05, "output": 0.20},
+    "amazon/nova-lite-v1": {"input": 0.06, "output": 0.24},
+    "default": {"input": 1.0, "output": 5.0}
 }
 
 # Recommended models by use case
 RECOMMENDED_MODELS = {
-    "cost_effective": "anthropic/claude-3-5-haiku-20241022",  # Best balance of quality/cost
-    "budget": "openai/gpt-4o-mini",  # Cheapest, good for testing
-    "quality": "anthropic/claude-sonnet-4-20250514",  # Highest quality
+    "cost_effective": "google/gemini-3-flash-preview",  # Best balance, 1M context
+    "budget": "google/gemini-2.0-flash-lite-001",  # Cheapest with 1M context
+    "quality": "anthropic/claude-sonnet-4.5",  # Highest quality
 }
+
+# Default model for new installations
+DEFAULT_MODEL = "google/gemini-3-flash-preview"
 
 # Default max emails per batch (to stay within token limits)
 DEFAULT_MAX_EMAILS_PER_BATCH = 150
@@ -105,10 +117,10 @@ def _get_selected_model() -> str:
         try:
             with open(config_file) as f:
                 config = json.load(f)
-                return config.get('model', "anthropic/claude-sonnet-4-20250514")
+                return config.get('model', DEFAULT_MODEL)
         except (json.JSONDecodeError, IOError):
             pass
-    return "anthropic/claude-sonnet-4-20250514"
+    return DEFAULT_MODEL
 
 
 def check_model_configured() -> bool:
@@ -1173,9 +1185,9 @@ def main():
         print("COST COMPARISON (same workload, different models):")
         print("-" * 60)
         comparison_models = [
-            ("anthropic/claude-3-5-haiku-20241022", "Haiku 3.5 (Recommended)"),
-            ("openai/gpt-4o-mini", "GPT-4o Mini (Budget)"),
-            ("anthropic/claude-sonnet-4-20250514", "Claude Sonnet 4.5"),
+            ("google/gemini-2.0-flash-lite-001", "Gemini 2.0 Flash Lite (Budget)"),
+            ("google/gemini-3-flash-preview", "Gemini 3 Flash (Recommended)"),
+            ("anthropic/claude-sonnet-4.5", "Claude Sonnet 4.5 (Quality)"),
         ]
         for model_id, label in comparison_models:
             alt_estimate = estimate_analysis_cost(all_batches, model_id)
