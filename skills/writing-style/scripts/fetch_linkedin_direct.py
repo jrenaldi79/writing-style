@@ -501,20 +501,51 @@ def extract_linkedin_urls_from_search_results(search_results, username):
     return urls
 
 
-def discover_posts_via_search(client, username, full_name, search_queries, engines=None):
+def run_single_search(query, engine, token):
     """
-    Discover LinkedIn posts using web search engines.
+    Run a single search query with its own MCP client.
+    Used for parallel search execution.
+
+    Args:
+        query: Search query string
+        engine: Search engine (google/bing)
+        token: BrightData API token
+
+    Returns:
+        tuple: (query, engine, results_dict or None, error_message or None)
+    """
+    mcp_config = get_mcp_command(token)
+    client = MCPClient(mcp_config["command"], mcp_config["env"])
+
+    try:
+        client.initialize()
+        result_json = client.call_tool("search_engine", {
+            "query": query,
+            "engine": engine
+        })
+        results = json.loads(result_json)
+        return (query, engine, results, None)
+    except Exception as e:
+        return (query, engine, None, str(e))
+    finally:
+        client.close()
+
+
+def discover_posts_via_search(token, username, full_name, search_queries, engines=None, max_workers=8):
+    """
+    Discover LinkedIn posts using web search engines (parallel execution).
 
     This supplements the activity feed by searching for posts that may not
     appear in recent activity. Uses multiple search queries and engines
     for comprehensive discovery.
 
     Args:
-        client: MCPClient instance
+        token: BrightData API token (for parallel clients)
         username: LinkedIn username
         full_name: User's full name (from profile)
         search_queries: List of additional search terms (e.g., ["jiobit", "google"])
         engines: List of search engines to use (default: ["google"])
+        max_workers: Number of parallel search workers (default: 8)
 
     Returns:
         list: Discovered LinkedIn post URLs
@@ -523,14 +554,12 @@ def discover_posts_via_search(client, username, full_name, search_queries, engin
         engines = ["google"]
 
     print("\n" + "=" * 60)
-    print("SEARCH-BASED POST DISCOVERY")
+    print("SEARCH-BASED POST DISCOVERY (Parallel)")
     print("=" * 60)
     print(f"Username: {username}")
     print(f"Search queries: {search_queries}")
     print(f"Engines: {engines}")
-
-    all_urls = set()
-    search_count = 0
+    print(f"Workers: {max_workers}")
 
     # Build search queries
     base_queries = [
@@ -557,37 +586,46 @@ def discover_posts_via_search(client, username, full_name, search_queries, engin
     # Dedupe queries
     unique_queries = list(dict.fromkeys(base_queries))
 
-    print(f"\nRunning {len(unique_queries)} queries across {len(engines)} engine(s)...")
+    # Build all search tasks (query, engine pairs)
+    search_tasks = [(q, e) for e in engines for q in unique_queries]
+    total_searches = len(search_tasks)
 
-    for engine in engines:
-        print(f"\n[SEARCH] Engine: {engine}")
+    print(f"\nRunning {total_searches} searches in parallel...")
 
-        for query in unique_queries:
-            search_count += 1
-            try:
-                result_json = client.call_tool("search_engine", {
-                    "query": query,
-                    "engine": engine
-                })
-                results = json.loads(result_json)
+    all_urls = set()
+    completed = 0
+    errors = 0
 
-                # Extract URLs from results
+    # Run searches in parallel
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_task = {
+            executor.submit(run_single_search, query, engine, token): (query, engine)
+            for query, engine in search_tasks
+        }
+
+        for future in as_completed(future_to_task):
+            completed += 1
+            query, engine, results, error = future.result()
+
+            if error:
+                errors += 1
+                print(f"   [{completed}/{total_searches}] ERROR ({engine}): {error[:30]}...")
+            elif results:
                 urls = extract_linkedin_urls_from_search_results(results, username)
                 new_urls = [u for u in urls if u not in all_urls]
-
                 if new_urls:
                     all_urls.update(new_urls)
-                    print(f"   [{search_count}] +{len(new_urls)} URLs: {query[:50]}...")
+                    print(f"   [{completed}/{total_searches}] +{len(new_urls)} URLs ({engine})")
                 else:
-                    print(f"   [{search_count}] 0 new: {query[:50]}...")
-
-            except Exception as e:
-                print(f"   [{search_count}] ERROR: {e}")
+                    print(f"   [{completed}/{total_searches}] 0 new ({engine})")
+            else:
+                print(f"   [{completed}/{total_searches}] empty ({engine})")
 
     print(f"\n" + "=" * 60)
     print(f"SEARCH DISCOVERY COMPLETE")
     print(f"=" * 60)
-    print(f"Total searches: {search_count}")
+    print(f"Total searches: {total_searches}")
+    print(f"Errors: {errors}")
     print(f"Unique URLs found: {len(all_urls)}")
     print(f"=" * 60)
 
@@ -1038,11 +1076,12 @@ Examples:
             activity_urls = extract_post_urls_from_activity(profile_data, username, limit=args.limit)
 
         # Step 2b: Search-based discovery (if --search-queries provided)
+        # Runs in parallel with separate MCP clients for speed
         search_urls = []
         if search_queries:
             full_name = profile_data.get('name', '')
             search_urls = discover_posts_via_search(
-                client, username, full_name, search_queries, search_engines
+                token, username, full_name, search_queries, search_engines, max_workers=8
             )
 
         # Combine and dedupe URLs from both sources
